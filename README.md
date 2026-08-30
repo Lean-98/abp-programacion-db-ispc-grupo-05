@@ -1,11 +1,16 @@
-# abp-programaci-n-db-ispc-grupo-pp
-ABP - TSDS ISPC 2026
+# Módulo Programador - TSDS - 2026
+## ABP - COM B.2 - GRUPO 05
 
+
+## Modelo ER
+
+```
 // Use DBML to define your database structure
 // Docs: https://dbml.dbdiagram.io/docs
 
 Table servicios {
   id integer [primary key]
+  tipo_servicio_id integer [not null]
   nombre varchar
   descripcion text
   duracion integer
@@ -13,6 +18,12 @@ Table servicios {
   updated_at timestamp
   created_at timestamp
 }
+
+Table tipo_servicio {
+  id integer [primary key]
+  nombre varchar
+}
+
 
 Table profesionales {
   id integer [primary key]
@@ -24,11 +35,6 @@ Table profesionales {
   created_at timestamp
 }
 
-
-Table tipo_servicio {
-  id integer [primary key]
-  nombre varchar
-}
 
 Table clientes {
   id integer [primary key]
@@ -45,6 +51,7 @@ Table clientes {
 
 Table productos {
   id integer [primary key]
+  tipo_producto_id integer [not null]
   nombre varchar
   descripcion text
   precio decimal
@@ -60,11 +67,20 @@ Table tipo_producto {
   nombre varchar
 }
 
-Table turnos {
+Table turno_productos {
   id integer [primary key]
+  turno_id integer [not null]
+  producto_id integer [not null]
+  cantidad integer
+  }
+
+
+Table turnos {
+  id integer [primary key] 
   cliente_id integer [not null]
   servicio_id integer [not null]
   profesional_id integer [not null]
+  tipo_pago_id integer [not null]
   hora_inicio date
   hora_fin date
   fecha datetime [not null]
@@ -81,13 +97,15 @@ Table tipo_pagos {
 }
 
 
-// Relación uno a uno
-Ref: servicios.id - tipo_servicio.id
-Ref: productos.id - tipo_producto.id
-Ref: turnos.id - tipo_pagos.id
-
-
-// Relación 1 a N (un cliente tiene muchos turnos)
+// Relación 1 a N 
 Ref: turnos.cliente_id > clientes.id
 Ref: turnos.servicio_id > servicios.id
 Ref: turnos.profesional_id > profesionales.id
+
+Ref: servicios.tipo_servicio_id > tipo_servicio.id
+Ref: productos.tipo_producto_id > tipo_producto.id
+Ref: turnos.tipo_pago_id > tipo_pagos.id
+
+Ref: turno_productos.turno_id > turnos.id
+Ref: turno_productos.producto_id > productos.id
+```
