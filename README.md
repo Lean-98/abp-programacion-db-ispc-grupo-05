@@ -6,7 +6,7 @@
 
 ## Descripción del proyecto
 
-Sistema de gestión de turnos para una barbería, desarrollado como Trabajo Integrador ABP para las materias Programación I y Base de Datos de la Tecnicatura Superior en Desarrollo de Software (ISPC). La aplicación de escritorio permite administrar clientes, profesionales, servicios y turnos desde una interfaz gráfica construida con Tkinter, conectada a una base de datos relacional diseñada y normalizada por el equipo.
+Sistema de gestión de turnos para una barbería y centro de estética, desarrollado como Trabajo Integrador ABP para las materias Programación I y Base de Datos de la Tecnicatura Superior en Desarrollo de Software (ISPC). La aplicación de escritorio permite administrar clientes, profesionales, servicios y turnos desde una interfaz gráfica construida con Tkinter, conectada a una base de datos relacional diseñada y normalizada por el equipo.
 
 ## Integrantes y roles
 
@@ -83,9 +83,9 @@ Table clientes {
   created_at timestamp
 }
 
-Table productos {
+Table insumos {
   id integer [primary key]
-  tipo_producto_id integer [not null]
+  tipo_insumo_id integer [not null]
   nombre varchar
   descripcion text
   precio decimal
@@ -96,15 +96,22 @@ Table productos {
   created_at timestamp
 }
 
-Table tipo_producto {
+Table tipo_insumo {
   id integer [primary key]
   nombre varchar
 }
 
-Table turno_productos {
+Table turno_servicios {
   id integer [primary key]
   turno_id integer [not null]
-  producto_id integer [not null]
+  servicio_id integer [not null]
+  }
+
+
+Table servicio_insumo {
+  id integer [primary key]
+  servicio_id integer [not null]
+  insumo_id integer [not null]
   cantidad integer
   }
 
@@ -112,7 +119,6 @@ Table turno_productos {
 Table turnos {
   id integer [primary key] 
   cliente_id integer [not null]
-  servicio_id integer [not null]
   profesional_id integer [not null]
   tipo_pago_id integer [not null]
   hora_inicio date
@@ -133,13 +139,16 @@ Table tipo_pagos {
 
 // Relación 1 a N 
 Ref: turnos.cliente_id > clientes.id
-Ref: turnos.servicio_id > servicios.id
 Ref: turnos.profesional_id > profesionales.id
 
 Ref: servicios.tipo_servicio_id > tipo_servicio.id
-Ref: productos.tipo_producto_id > tipo_producto.id
+Ref: insumos.tipo_insumo_id > tipo_insumo.id
 Ref: turnos.tipo_pago_id > tipo_pagos.id
 
-Ref: turno_productos.turno_id > turnos.id
-Ref: turno_productos.producto_id > productos.id
+// Relación N a N 
+Ref: turno_servicios.turno_id > turnos.id
+Ref: turno_servicios.servicio_id > servicios.id
+
+Ref: servicio_insumo.servicio_id > servicios.id
+Ref: servicio_insumo.insumo_id > insumos.id
 ```
