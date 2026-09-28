@@ -1,4 +1,6 @@
-# Tecnicatura Superior en Desarrollo de Software
+# Turnero
+
+## Tecnicatura Superior en Desarrollo de Software
 ## Programación y Base de Datos — Comisión B2 — Grupo N°5
 ## "Pioneros de Python"
 
@@ -6,7 +8,7 @@
 
 ## Descripción del proyecto
 
-Sistema de gestión de turnos para una barbería y centro de estética, desarrollado como Trabajo Integrador ABP para las materias Programación I y Base de Datos de la Tecnicatura Superior en Desarrollo de Software (ISPC). La aplicación de escritorio permite administrar clientes, profesionales, servicios y turnos desde una interfaz gráfica construida con Tkinter, conectada a una base de datos relacional diseñada y normalizada por el equipo.
+**Turnero** es un sistema de gestión de turnos para una barbería y centro de estética, desarrollado como Trabajo Integrador ABP para las materias Programación I y Base de Datos de la Tecnicatura Superior en Desarrollo de Software (ISPC). La aplicación de escritorio permite administrar clientes, profesionales, servicios y turnos desde una interfaz gráfica construida con Tkinter, conectada a una base de datos relacional diseñada y normalizada por el equipo.
 
 ## Integrantes y roles
 
@@ -48,7 +50,7 @@ Table servicios {
   nombre varchar
   descripcion text
   duracion integer
-  precio decimal
+  precio decimal [not null]
   updated_at timestamp
   created_at timestamp
 }
@@ -74,8 +76,8 @@ Table clientes {
   id integer [primary key]
   nombre varchar
   apellido varchar
-  dni integer
-  telefono integer
+  dni varchar [not null, unique]
+  telefono varchar
   direccion varchar
   mail varchar
   rol varchar
@@ -88,10 +90,10 @@ Table insumos {
   tipo_insumo_id integer [not null]
   nombre varchar
   descripcion text
-  precio decimal
-  codigo_barra integer
+  precio decimal [not null]
+  codigo_barra varchar [unique]
   fecha_vencimiento date
-  stock integer
+  stock integer [not null, default: 0]
   updated_at timestamp
   created_at timestamp
 }
@@ -121,11 +123,11 @@ Table turnos {
   cliente_id integer [not null]
   profesional_id integer [not null]
   tipo_pago_id integer [not null]
-  hora_inicio date
-  hora_fin date
   fecha datetime [not null]
+  hora_inicio time
+  hora_fin time
   precio_final decimal
-  estado varchar
+  estado varchar [not null, default: 'pendiente']
   notas text
   updated_at timestamp
   created_at timestamp
@@ -137,18 +139,19 @@ Table tipo_pagos {
 }
 
 
-// Relación 1 a N 
-Ref: turnos.cliente_id > clientes.id
-Ref: turnos.profesional_id > profesionales.id
+// Relación 1 a N (todas con delete: restrict — no se puede borrar el
+// registro "padre" mientras tenga filas que lo referencian)
+Ref: turnos.cliente_id > clientes.id [delete: restrict]
+Ref: turnos.profesional_id > profesionales.id [delete: restrict]
 
-Ref: servicios.tipo_servicio_id > tipo_servicio.id
-Ref: insumos.tipo_insumo_id > tipo_insumo.id
-Ref: turnos.tipo_pago_id > tipo_pagos.id
+Ref: servicios.tipo_servicio_id > tipo_servicio.id [delete: restrict]
+Ref: insumos.tipo_insumo_id > tipo_insumo.id [delete: restrict]
+Ref: turnos.tipo_pago_id > tipo_pagos.id [delete: restrict]
 
 // Relación N a N 
-Ref: turno_servicios.turno_id > turnos.id
-Ref: turno_servicios.servicio_id > servicios.id
+Ref: turno_servicios.turno_id > turnos.id [delete: restrict]
+Ref: turno_servicios.servicio_id > servicios.id [delete: restrict]
 
-Ref: servicio_insumo.servicio_id > servicios.id
-Ref: servicio_insumo.insumo_id > insumos.id
+Ref: servicio_insumo.servicio_id > servicios.id [delete: restrict]
+Ref: servicio_insumo.insumo_id > insumos.id [delete: restrict]
 ```

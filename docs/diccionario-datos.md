@@ -12,8 +12,8 @@ Este documento detalla, para cada tabla del modelo E-R, el nombre y tipo de dato
 | id | INTEGER | PK, autoincremental |
 | nombre | VARCHAR(50) | NOT NULL |
 | apellido | VARCHAR(50) | NOT NULL |
-| dni | INTEGER | NOT NULL, UNIQUE |
-| telefono | INTEGER | |
+| dni | VARCHAR(10) | NOT NULL, UNIQUE |
+| telefono | VARCHAR(20) | |
 | direccion | VARCHAR(100) | |
 | mail | VARCHAR(100) | |
 | rol | VARCHAR(20) | |
@@ -54,7 +54,7 @@ Este documento detalla, para cada tabla del modelo E-R, el nombre y tipo de dato
 | nombre | VARCHAR(50) | NOT NULL |
 | descripcion | TEXT | |
 | duracion | INTEGER | CHECK (duracion > 0) — en minutos |
-| precio | DECIMAL(10,2) | CHECK (precio >= 0) |
+| precio | DECIMAL(10,2) | NOT NULL, CHECK (precio >= 0) |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP | |
 
@@ -77,8 +77,8 @@ Este documento detalla, para cada tabla del modelo E-R, el nombre y tipo de dato
 | tipo_insumo_id | INTEGER | FK → tipo_insumo.id, NOT NULL |
 | nombre | VARCHAR(50) | NOT NULL |
 | descripcion | TEXT | |
-| precio | DECIMAL(10,2) | CHECK (precio >= 0) |
-| codigo_barra | INTEGER | UNIQUE |
+| precio | DECIMAL(10,2) | NOT NULL, CHECK (precio >= 0) |
+| codigo_barra | VARCHAR(20) | UNIQUE |
 | fecha_vencimiento | DATE | |
 | stock | INTEGER | NOT NULL, DEFAULT 0, CHECK (stock >= 0) |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
@@ -106,7 +106,7 @@ Este documento detalla, para cada tabla del modelo E-R, el nombre y tipo de dato
 | fecha | DATETIME | NOT NULL |
 | hora_inicio | TIME | |
 | hora_fin | TIME | CHECK (hora_fin > hora_inicio) |
-| precio_final | DECIMAL(10,2) | CHECK (precio_final >= 0) |
+| precio_final | DECIMAL(10,2) | CHECK (precio_final >= 0) — nullable a propósito: un turno puede crearse en estado "pendiente" sin precio definido todavía |
 | estado | VARCHAR(20) | NOT NULL, DEFAULT 'pendiente' — valores esperados: pendiente / confirmado / completado / cancelado |
 | notas | TEXT | |
 | created_at | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP |
@@ -156,3 +156,5 @@ Restricción adicional recomendada: `UNIQUE (servicio_id, insumo_id)` — evita 
 | turno_servicios | servicios | servicio_id |
 | servicio_insumo | servicios | servicio_id |
 | servicio_insumo | insumos | insumo_id |
+
+Todas las FK tienen `ON DELETE RESTRICT`: no se puede borrar un registro (por ejemplo un cliente o un servicio) si todavía tiene turnos u otras filas que lo referencian.
