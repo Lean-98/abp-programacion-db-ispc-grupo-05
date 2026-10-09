@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: turnero-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-turnero}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-turnero}
+      POSTGRES_DB: ${POSTGRES_DB:-turnero}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - turnero_pgdata:/var/lib/postgresql/data
+      # Postgres corre todo lo que encuentra acá en orden alfabético, pero
+      # SOLO la primera vez que se crea el volumen (si ya existen datos,
+      # se ignora; para forzar una recarga hay que "docker compose down -v").
+      - ./docs/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-turnero} -d ${POSTGRES_DB:-turnero}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  turnero_pgdata:

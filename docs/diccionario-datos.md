@@ -103,7 +103,7 @@ Este documento detalla, para cada tabla del modelo E-R, el nombre y tipo de dato
 | cliente_id | INTEGER | FK → clientes.id, NOT NULL |
 | profesional_id | INTEGER | FK → profesionales.id, NOT NULL |
 | tipo_pago_id | INTEGER | FK → tipo_pagos.id, NOT NULL |
-| fecha | DATETIME | NOT NULL |
+| fecha | TIMESTAMP | NOT NULL |
 | hora_inicio | TIME | |
 | hora_fin | TIME | CHECK (hora_fin > hora_inicio) |
 | precio_final | DECIMAL(10,2) | CHECK (precio_final >= 0) — nullable a propósito: un turno puede crearse en estado "pendiente" sin precio definido todavía |

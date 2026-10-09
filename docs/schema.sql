@@ -1,41 +1,35 @@
 -- =============================================================
 -- Script DDL — Turnero
--- Motor: SQLite
+-- Motor: PostgreSQL
 --
--- Correcciones sobre la primera versión (export crudo de dbdiagram):
---   1. Las FK se movieron adentro de cada CREATE TABLE. SQLite no
---      soporta ALTER TABLE ... ADD FOREIGN KEY (no existe ADD CONSTRAINT).
---   2. Se agregó PRAGMA foreign_keys = ON, porque SQLite ignora las
---      FK por defecto si no se activa explícitamente en cada conexión.
---   3. Se agregaron las restricciones NOT NULL / UNIQUE / CHECK / DEFAULT
---      documentadas en docs/diccionario-datos.md (antes el DDL y el
---      diccionario no coincidían).
---   4. dni, telefono y codigo_barra pasaron de integer a varchar (un
---      integer pierde ceros a la izquierda y no tiene sentido hacer
---      cuentas con esos valores). precio en servicios e insumos pasó
---      a NOT NULL. Se agregó ON DELETE RESTRICT explícito en las FK
---      para no permitir borrar un registro que todavía tiene
---      referencias (feedback de la profesora).
+-- Migrado desde SQLite (usado como prototipo en el Hito 2):
+--   1. INTEGER PRIMARY KEY -> SERIAL PRIMARY KEY, para autoincremento
+--      real (en SQLite un INTEGER PRIMARY KEY ya autoincrementa solo;
+--      en PostgreSQL hace falta SERIAL, que crea una secuencia).
+--   2. DATETIME -> TIMESTAMP (DATETIME no es un tipo válido en
+--      PostgreSQL).
+--   3. Se quitó "PRAGMA foreign_keys = ON", que es específico de
+--      SQLite. En PostgreSQL las claves foráneas siempre se validan.
+--   4. El resto (NOT NULL, UNIQUE, CHECK, DEFAULT, ON DELETE RESTRICT)
+--      ya estaba en sintaxis estándar y no cambió.
 -- =============================================================
-
-PRAGMA foreign_keys = ON;
 
 -- -------------------------------------------------------------
 -- Tablas catálogo (sin FK)
 -- -------------------------------------------------------------
 
 CREATE TABLE "tipo_servicio" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "nombre" VARCHAR(50) NOT NULL UNIQUE
 );
 
 CREATE TABLE "tipo_insumo" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "nombre" VARCHAR(50) NOT NULL UNIQUE
 );
 
 CREATE TABLE "tipo_pagos" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "nombre" VARCHAR(30) NOT NULL UNIQUE
 );
 
@@ -44,7 +38,7 @@ CREATE TABLE "tipo_pagos" (
 -- -------------------------------------------------------------
 
 CREATE TABLE "clientes" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "nombre" VARCHAR(50) NOT NULL,
   "apellido" VARCHAR(50) NOT NULL,
   "dni" VARCHAR(10) NOT NULL UNIQUE,
@@ -57,7 +51,7 @@ CREATE TABLE "clientes" (
 );
 
 CREATE TABLE "profesionales" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "nombre" VARCHAR(50) NOT NULL,
   "apellido" VARCHAR(50) NOT NULL,
   "especialidad" VARCHAR(50),
@@ -67,7 +61,7 @@ CREATE TABLE "profesionales" (
 );
 
 CREATE TABLE "servicios" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "tipo_servicio_id" INTEGER NOT NULL,
   "nombre" VARCHAR(50) NOT NULL,
   "descripcion" TEXT,
@@ -79,7 +73,7 @@ CREATE TABLE "servicios" (
 );
 
 CREATE TABLE "insumos" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "tipo_insumo_id" INTEGER NOT NULL,
   "nombre" VARCHAR(50) NOT NULL,
   "descripcion" TEXT,
@@ -97,11 +91,11 @@ CREATE TABLE "insumos" (
 -- -------------------------------------------------------------
 
 CREATE TABLE "turnos" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "cliente_id" INTEGER NOT NULL,
   "profesional_id" INTEGER NOT NULL,
   "tipo_pago_id" INTEGER NOT NULL,
-  "fecha" DATETIME NOT NULL,
+  "fecha" TIMESTAMP NOT NULL,
   "hora_inicio" TIME,
   "hora_fin" TIME CHECK ("hora_fin" > "hora_inicio"),
   "precio_final" DECIMAL(10,2) CHECK ("precio_final" >= 0),
@@ -117,7 +111,7 @@ CREATE TABLE "turnos" (
 
 -- Resuelve turnos <-> servicios (un turno puede incluir varios servicios)
 CREATE TABLE "turno_servicios" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "turno_id" INTEGER NOT NULL,
   "servicio_id" INTEGER NOT NULL,
   UNIQUE ("turno_id", "servicio_id"),
@@ -127,7 +121,7 @@ CREATE TABLE "turno_servicios" (
 
 -- Resuelve servicios <-> insumos (qué insumos, y en qué cantidad, consume cada servicio)
 CREATE TABLE "servicio_insumo" (
-  "id" INTEGER PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "servicio_id" INTEGER NOT NULL,
   "insumo_id" INTEGER NOT NULL,
   "cantidad" INTEGER NOT NULL CHECK ("cantidad" > 0),
