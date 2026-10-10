@@ -1,7 +1,9 @@
 # Turnero
 
 ## Tecnicatura Superior en Desarrollo de Software
+
 ## Programación y Base de Datos — Comisión B2 — Grupo N°5
+
 ## "Pioneros de Python"
 
 **Profesores:** Enzo Eduardo Bruno y Maria Florencia Garcia Zavia
@@ -12,14 +14,14 @@
 
 ## Integrantes y roles
 
-| Rol | Responsabilidad principal | Responsable |
-|---|---|---|
-| Coordinador | Organiza reuniones, controla el cumplimiento de plazos y consolida las entregas. Además desarrolla su propia funcionalidad. | Rivero Nicolas |
-| Modelo de datos | Diseña el modelo E-R, aplica la normalización, redacta el diccionario de datos y el script DDL. Equivalente a un rol de diseñador/a de bases de datos. | Otoño Silvina, Piazza Bianca |
-| Interfaz | Construye las ventanas, formularios y listados en Tkinter, y define la navegación entre pantallas. | Rivero Nicolas, Piazza Leandro |
-| Acceso a datos | Programa la conexión y las funciones que ejecutan las sentencias SQL desde Python, y configura roles y permisos en el SGBD. | Piazza Bianca, Piazza Leandro |
-| Validaciones | Implementa el control de los datos ingresados, el manejo de errores y los mensajes al usuario. | Villegas Tomas |
-| Documentación y pruebas | Redacta el informe, arma el manual de usuario y prueba sistemáticamente el sistema. Además desarrolla su propia funcionalidad. | Otoño Silvina |
+| Rol                     | Responsabilidad principal                                                                                                                              | Responsable                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ |
+| Coordinador             | Organiza reuniones, controla el cumplimiento de plazos y consolida las entregas. Además desarrolla su propia funcionalidad.                            | Rivero Nicolas                 |
+| Modelo de datos         | Diseña el modelo E-R, aplica la normalización, redacta el diccionario de datos y el script DDL. Equivalente a un rol de diseñador/a de bases de datos. | Otoño Silvina, Piazza Bianca   |
+| Interfaz                | Construye las ventanas, formularios y listados en Tkinter, y define la navegación entre pantallas.                                                     | Rivero Nicolas, Piazza Leandro |
+| Acceso a datos          | Programa la conexión y las funciones que ejecutan las sentencias SQL desde Python, y configura roles y permisos en el SGBD.                            | Piazza Bianca, Piazza Leandro  |
+| Validaciones            | Implementa el control de los datos ingresados, el manejo de errores y los mensajes al usuario.                                                         | Villegas Tomas                 |
+| Documentación y pruebas | Redacta el informe, arma el manual de usuario y prueba sistemáticamente el sistema. Además desarrolla su propia funcionalidad.                         | Otoño Silvina                  |
 
 **Integrantes:** Bianca Nahir Piazza, Leandro Alexis Piazza, Tomas Alejandro Villegas, Emiliano Nicolas Rivero, Silvina Andrea Otoño.
 
@@ -27,7 +29,7 @@
 
 - **Lenguaje:** Python 3.10+
 - **Interfaz gráfica:** Tkinter / ttk
-- **Base de datos:** SQLite
+- **Base de datos:** PostgreSQL 16 (vía Docker para desarrollo local)
 - **Control de versiones:** Git / GitHub
 
 ## Funcionalidades previstas
@@ -37,6 +39,37 @@
 - Agenda/listado de turnos con búsqueda y filtrado por fecha o cliente.
 - Consulta combinada (JOIN) que muestre turnos junto con los datos del cliente, servicio y profesional asociados.
 - Validación de los campos obligatorios y mensajes claros al usuario ante operaciones exitosas y errores.
+
+## Cómo levantar el entorno
+
+Requisitos previos: **Python 3.10+**, **Docker** (con el plugin `docker compose`) y **Git**.
+
+```bash
+# 1) Traer el repositorio actualizado
+git pull
+
+# 2) Instalar las dependencias de Python (driver de PostgreSQL)
+pip install -r requirements.txt
+
+# 3) Levantar PostgreSQL en Docker (crea las tablas y los roles la
+# primera vez, usando docs/schema.sql y docs/roles.sql)
+docker compose up -d
+
+# 4) Correr la aplicación
+python3 app/main.py
+```
+
+Para parar la base cuando termines de probar:
+
+```bash
+docker compose down        # para el contenedor, conserva los datos
+docker compose down -v     # para el contenedor y borra los datos (reset limpio)
+```
+
+La app se conecta por defecto a `localhost:5432`, base `turnero`, con el
+rol `turnero_app` (ver `docs/roles.sql`). Esos valores se pueden
+sobrescribir con variables de entorno (`DB_HOST`, `DB_PORT`, `DB_NAME`,
+`DB_USER`, `DB_PASSWORD`) si alguien corre PostgreSQL de otra forma.
 
 ## Modelo ER
 
@@ -119,7 +152,7 @@ Table servicio_insumo {
 
 
 Table turnos {
-  id integer [primary key] 
+  id integer [primary key]
   cliente_id integer [not null]
   profesional_id integer [not null]
   tipo_pago_id integer [not null]
@@ -148,7 +181,7 @@ Ref: servicios.tipo_servicio_id > tipo_servicio.id [delete: restrict]
 Ref: insumos.tipo_insumo_id > tipo_insumo.id [delete: restrict]
 Ref: turnos.tipo_pago_id > tipo_pagos.id [delete: restrict]
 
-// Relación N a N 
+// Relación N a N
 Ref: turno_servicios.turno_id > turnos.id [delete: restrict]
 Ref: turno_servicios.servicio_id > servicios.id [delete: restrict]
 
