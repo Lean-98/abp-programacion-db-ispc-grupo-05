@@ -1,18 +1,20 @@
 """
-ABM de servicios.
+ABM de servicios — conectado a PostgreSQL vía datos.py.
 
 Mismo patrón que ui/abm_clientes.py: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar.
 
-Hito 2: solo interfaz visual, sin conexión a la base ni datos de prueba.
-El Treeview arranca vacío; se completa en el Hito 3 con
-datos.listar_servicios() / datos.buscar_servicios(texto). El combo de
-tipo de servicio se completa en el Hito 3 con datos.listar_tipo_servicio().
-Guardar y Eliminar están simulados, no persisten nada todavía.
+Sin validación de formulario a propósito: eso lo centraliza Tomás en
+validaciones.py y se enchufa acá cuando esté listo. El único control que
+queda es evitar que un texto no numérico en duración/precio rompa la
+conversión antes de llegar a la base (no es una regla de negocio).
+
+Responsable: Nicolás Rivero (Interfaz).
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+import datos
 from ui.widgets_comunes import campo_formulario, combo_formulario, crear_treeview
 
 
@@ -29,6 +31,7 @@ class AbmServicios(ttk.Frame):
         super().__init__(parent)
 
         self.servicio_seleccionado_id = None
+        self.tipos_servicio = {}  # nombre -> id, para resolver el combo
 
         contenedor = ttk.Frame(self)
         contenedor.pack(fill="both", expand=True, padx=8, pady=8)
@@ -38,6 +41,8 @@ class AbmServicios(ttk.Frame):
 
         self._armar_listado(contenedor)
         self._armar_formulario(contenedor)
+        self._cargar_tipos_servicio()
+        self._refrescar_listado()
 
     # --- Listado (izquierda) ---
 
@@ -63,7 +68,6 @@ class AbmServicios(ttk.Frame):
         frame = ttk.LabelFrame(parent, text="Datos del servicio")
         frame.grid(row=0, column=1, sticky="nsew")
 
-        # Hito 3: values = [t["nombre"] for t in datos.listar_tipo_servicio()]
         self.combo_tipo_servicio = combo_formulario(frame, 0, "Tipo de servicio:", valores=[])
 
         self.entry_nombre = campo_formulario(frame, 1, "Nombre:")
@@ -86,18 +90,76 @@ class AbmServicios(ttk.Frame):
             side="left", padx=(4, 0)
         )
 
+    # --- Catálogo y listado: traer datos reales ---
+
+    def _cargar_tipos_servicio(self):
+        try:
+            tipos = datos.listar_tipo_servicio()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudieron cargar los tipos de servicio:\n{e}"
+            )
+            return
+        self.tipos_servicio = {tipo["nombre"]: tipo["id"] for tipo in tipos}
+        self.combo_tipo_servicio["values"] = list(self.tipos_servicio.keys())
+
+    def _refrescar_listado(self, filas=None):
+        self.tree.delete(*self.tree.get_children())
+        try:
+            if filas is None:
+                filas = datos.listar_servicios()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudo conectar a la base de datos:\n{e}"
+            )
+            return
+
+        for fila in filas:
+            self.tree.insert(
+                "", "end", iid=str(fila["id"]),
+                values=(
+                    fila["nombre"],
+                    fila["tipo_servicio"],
+                    fila["duracion"] if fila["duracion"] is not None else "",
+                    fila["precio"],
+                ),
+            )
+
     # --- Acciones (simuladas en Hito 2, sin persistencia real) ---
 
     def _buscar(self):
-        # Hito 3: reemplazar por datos.buscar_servicios(self.entry_busqueda.get())
-        messagebox.showinfo("Buscar", "Sin datos todavía: se completa en el Hito 3.")
+        texto = self.entry_busqueda.get().strip()
+        try:
+            filas = datos.buscar_servicios(texto) if texto else datos.listar_servicios()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo buscar:\n{e}")
+            return
+        self._refrescar_listado(filas)
 
     def _on_seleccionar(self, event=None):
         seleccion = self.tree.selection()
         if not seleccion:
             return
-        self.servicio_seleccionado_id = seleccion[0]
-        # Hito 3: completar los campos con datos.obtener_servicio(id) acá.
+
+        servicio_id = int(seleccion[0])
+        try:
+            servicio = datos.obtener_servicio(servicio_id)
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo leer el servicio:\n{e}")
+            return
+        if servicio is None:
+            return
+
+        self.servicio_seleccionado_id = servicio_id
+        self.combo_tipo_servicio.set(servicio["tipo_servicio"])
+        self.entry_nombre.delete(0, tk.END)
+        self.entry_nombre.insert(0, servicio["nombre"] or "")
+        self.text_descripcion.delete("1.0", tk.END)
+        self.text_descripcion.insert("1.0", servicio["descripcion"] or "")
+        self.entry_duracion.delete(0, tk.END)
+        self.entry_duracion.insert(0, str(servicio["duracion"]) if servicio["duracion"] is not None else "")
+        self.entry_precio.delete(0, tk.END)
+        self.entry_precio.insert(0, str(servicio["precio"]) if servicio["precio"] is not None else "")
 
     def _nuevo(self):
         self.servicio_seleccionado_id = None
@@ -109,15 +171,38 @@ class AbmServicios(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-        errores = self._validar()
-        if errores:
-            messagebox.showerror("Datos inválidos", "\n".join(errores))
+        # Sin validación de formulario a propósito (ver docstring del
+        # módulo) — acá se engancha validaciones.py cuando esté listo.
+        tipo_servicio_id = self.tipos_servicio.get(self.combo_tipo_servicio.get())
+        nombre = self.entry_nombre.get().strip()
+        descripcion = self.text_descripcion.get("1.0", tk.END).strip() or None
+        duracion_texto = self.entry_duracion.get().strip()
+        precio_texto = self.entry_precio.get().strip()
+
+        try:
+            duracion = int(duracion_texto) if duracion_texto else None
+            precio = float(precio_texto) if precio_texto else None
+        except ValueError:
+            messagebox.showerror("Datos inválidos", "Duración y precio deben ser números.")
             return
 
-        # Hito 3: acá va datos.crear_servicio(...) / datos.actualizar_servicio(...)
-        messagebox.showinfo(
-            "Guardar servicio", "Servicio guardado (simulado, sin persistencia todavía)."
-        )
+        try:
+            if self.servicio_seleccionado_id is None:
+                datos.crear_servicio(tipo_servicio_id, nombre, descripcion, duracion, precio)
+                mensaje = "Servicio creado correctamente."
+            else:
+                datos.actualizar_servicio(
+                    self.servicio_seleccionado_id, tipo_servicio_id, nombre,
+                    descripcion, duracion, precio,
+                )
+                mensaje = "Servicio actualizado correctamente."
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("No se pudo guardar", f"Error al guardar el servicio:\n{e}")
+            return
+
+        messagebox.showinfo("Guardar servicio", mensaje)
+        self._nuevo()
+        self._refrescar_listado()
 
     def _eliminar(self):
         if not self.servicio_seleccionado_id:
@@ -125,13 +210,26 @@ class AbmServicios(ttk.Frame):
             return
 
         nombre = self.entry_nombre.get().strip() or "el servicio seleccionado"
-        if messagebox.askyesno(
+        if not messagebox.askyesno(
             "Eliminar servicio", f"¿Confirmás que querés eliminar {nombre}?"
         ):
-            # Hito 3: acá va datos.eliminar_servicio(self.servicio_seleccionado_id)
-            self.tree.delete(self.servicio_seleccionado_id)
-            self._nuevo()
-            messagebox.showinfo("Eliminar servicio", "Servicio eliminado (simulado).")
+            return
+
+        try:
+            datos.eliminar_servicio(self.servicio_seleccionado_id)
+        except datos.ErrorBaseDeDatos as e:
+            if "foreign key" in str(e).lower():
+                messagebox.showerror(
+                    "No se pudo eliminar",
+                    "Ese servicio está en uso (turnos o insumos asociados), no se puede eliminar.",
+                )
+            else:
+                messagebox.showerror("No se pudo eliminar", f"Error al eliminar:\n{e}")
+            return
+
+        messagebox.showinfo("Eliminar servicio", "Servicio eliminado correctamente.")
+        self._nuevo()
+        self._refrescar_listado()
 
     def _validar(self):
         """Validaciones mínimas de formulario.
