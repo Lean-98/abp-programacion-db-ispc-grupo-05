@@ -1,18 +1,21 @@
 """
-ABM de insumos.
+ABM de insumos — conectado a PostgreSQL vía datos.py.
 
 Mismo patrón que ui/abm_clientes.py: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar.
 
-Hito 2: solo interfaz visual, sin conexión a la base ni datos de prueba.
-El Treeview arranca vacío; se completa en el Hito 3 con
-datos.listar_insumos() / datos.buscar_insumos(texto). El combo de tipo
-de insumo se completa en el Hito 3 con datos.listar_tipo_insumo().
-Guardar y Eliminar están simulados, no persisten nada todavía.
+Sin validación de formulario a propósito: eso lo centraliza Tomás en
+validaciones.py y se enchufa acá cuando esté listo. El único control que
+queda es evitar que un texto no numérico o una fecha mal escrita rompan
+la conversión antes de llegar a la base (no es una regla de negocio).
+
+Responsable: Nicolás Rivero (Interfaz).
 """
 import tkinter as tk
+from datetime import datetime
 from tkinter import ttk, messagebox
 
+import datos
 from ui.widgets_comunes import campo_formulario, combo_formulario, crear_treeview
 
 
@@ -29,6 +32,7 @@ class AbmInsumos(ttk.Frame):
         super().__init__(parent)
 
         self.insumo_seleccionado_id = None
+        self.tipos_insumo = {}  # nombre -> id, para resolver el combo
 
         contenedor = ttk.Frame(self)
         contenedor.pack(fill="both", expand=True, padx=8, pady=8)
@@ -38,6 +42,8 @@ class AbmInsumos(ttk.Frame):
 
         self._armar_listado(contenedor)
         self._armar_formulario(contenedor)
+        self._cargar_tipos_insumo()
+        self._refrescar_listado()
 
     # --- Listado (izquierda) ---
 
@@ -63,7 +69,6 @@ class AbmInsumos(ttk.Frame):
         frame = ttk.LabelFrame(parent, text="Datos del insumo")
         frame.grid(row=0, column=1, sticky="nsew")
 
-        # Hito 3: values = [t["nombre"] for t in datos.listar_tipo_insumo()]
         self.combo_tipo_insumo = combo_formulario(frame, 0, "Tipo de insumo:", valores=[])
 
         self.entry_nombre = campo_formulario(frame, 1, "Nombre:")
@@ -88,18 +93,81 @@ class AbmInsumos(ttk.Frame):
             side="left", padx=(4, 0)
         )
 
-    # --- Acciones (simuladas en Hito 2, sin persistencia real) ---
+    # --- Catálogo y listado: traer datos reales ---
+    
+    def _cargar_tipos_insumo(self):
+        try:
+            tipos = datos.listar_tipo_insumo()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudieron cargar los tipos de insumo:\n{e}"
+            )
+            return
+        self.tipos_insumo = {tipo["nombre"]: tipo["id"] for tipo in tipos}
+        self.combo_tipo_insumo["values"] = list(self.tipos_insumo.keys())
+
+    def _refrescar_listado(self, filas=None):
+        self.tree.delete(*self.tree.get_children())
+        try:
+            if filas is None:
+                filas = datos.listar_insumos()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudo conectar a la base de datos:\n{e}"
+            )
+            return
+
+        for fila in filas:
+            self.tree.insert(
+                "", "end", iid=str(fila["id"]),
+                values=(
+                    fila["nombre"],
+                    fila["tipo_insumo"],
+                    fila["stock"],
+                    fila["precio"],
+                ),
+            )
+    
+    # --- Acciones ---
 
     def _buscar(self):
-        # Hito 3: reemplazar por datos.buscar_insumos(self.entry_busqueda.get())
-        messagebox.showinfo("Buscar", "Sin datos todavía: se completa en el Hito 3.")
+        texto = self.entry_busqueda.get().strip()
+        try:
+            filas = datos.buscar_insumos(texto) if texto else datos.listar_insumos()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo buscar:\n{e}")
+            return
+        self._refrescar_listado(filas)
 
     def _on_seleccionar(self, event=None):
         seleccion = self.tree.selection()
         if not seleccion:
             return
-        self.insumo_seleccionado_id = seleccion[0]
-        # Hito 3: completar los campos con datos.obtener_insumo(id) acá.
+
+        insumo_id = int(seleccion[0])
+        try:
+            insumo = datos.obtener_insumo(insumo_id)
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo leer el insumo:\n{e}")
+            return
+        if insumo is None:
+            return
+
+        self.insumo_seleccionado_id = insumo_id
+        self.combo_tipo_insumo.set(insumo["tipo_insumo"])
+        self.entry_nombre.delete(0, tk.END)
+        self.entry_nombre.insert(0, insumo["nombre"] or "")
+        self.text_descripcion.delete("1.0", tk.END)
+        self.text_descripcion.insert("1.0", insumo["descripcion"] or "")
+        self.entry_precio.delete(0, tk.END)
+        self.entry_precio.insert(0, str(insumo["precio"]) if insumo["precio"] is not None else "")
+        self.entry_codigo_barra.delete(0, tk.END)
+        self.entry_codigo_barra.insert(0, insumo["codigo_barra"] or "")
+        self.entry_fecha_vencimiento.delete(0, tk.END)
+        fecha = insumo["fecha_vencimiento"]
+        self.entry_fecha_vencimiento.insert(0, fecha.strftime("%d/%m/%Y") if fecha else "")
+        self.entry_stock.delete(0, tk.END)
+        self.entry_stock.insert(0, str(insumo["stock"]) if insumo["stock"] is not None else "")
 
     def _nuevo(self):
         self.insumo_seleccionado_id = None
@@ -123,19 +191,77 @@ class AbmInsumos(ttk.Frame):
             "Guardar insumo", "Insumo guardado (simulado, sin persistencia todavía)."
         )
 
+    def _guardar(self):
+        # Sin validación de formulario a propósito (ver docstring del
+        # módulo) — acá se engancha validaciones.py cuando esté listo.
+        tipo_insumo_id = self.tipos_insumo.get(self.combo_tipo_insumo.get())
+        nombre = self.entry_nombre.get().strip()
+        descripcion = self.text_descripcion.get("1.0", tk.END).strip() or None
+        precio_texto = self.entry_precio.get().strip()
+        codigo_barra = self.entry_codigo_barra.get().strip() or None
+        fecha_texto = self.entry_fecha_vencimiento.get().strip()
+        stock_texto = self.entry_stock.get().strip()
+
+        try:
+            precio = float(precio_texto) if precio_texto else None
+            stock = int(stock_texto) if stock_texto else 0
+            fecha_vencimiento = (
+                datetime.strptime(fecha_texto, "%d/%m/%Y").date() if fecha_texto else None
+            )
+        except ValueError:
+            messagebox.showerror(
+                "Datos inválidos",
+                "Revisá el precio, el stock (números) y la fecha de vencimiento (DD/MM/AAAA).",
+            )
+            return
+
+        try:
+            if self.insumo_seleccionado_id is None:
+                datos.crear_insumo(
+                    tipo_insumo_id, nombre, descripcion, precio,
+                    codigo_barra, fecha_vencimiento, stock,
+                )
+                mensaje = "Insumo creado correctamente."
+            else:
+                datos.actualizar_insumo(
+                    self.insumo_seleccionado_id, tipo_insumo_id, nombre, descripcion,
+                    precio, codigo_barra, fecha_vencimiento, stock,
+                )
+                mensaje = "Insumo actualizado correctamente."
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("No se pudo guardar", f"Error al guardar el insumo:\n{e}")
+            return
+
+        messagebox.showinfo("Guardar insumo", mensaje)
+        self._nuevo()
+        self._refrescar_listado()
+
     def _eliminar(self):
         if not self.insumo_seleccionado_id:
             messagebox.showwarning("Eliminar insumo", "Seleccioná un insumo de la lista.")
             return
 
         nombre = self.entry_nombre.get().strip() or "el insumo seleccionado"
-        if messagebox.askyesno(
+        if not messagebox.askyesno(
             "Eliminar insumo", f"¿Confirmás que querés eliminar {nombre}?"
         ):
-            # Hito 3: acá va datos.eliminar_insumo(self.insumo_seleccionado_id)
-            self.tree.delete(self.insumo_seleccionado_id)
-            self._nuevo()
-            messagebox.showinfo("Eliminar insumo", "Insumo eliminado (simulado).")
+            return
+
+        try:
+            datos.eliminar_insumo(self.insumo_seleccionado_id)
+        except datos.ErrorBaseDeDatos as e:
+            if "foreign key" in str(e).lower():
+                messagebox.showerror(
+                    "No se pudo eliminar",
+                    "Ese insumo está en uso en algún servicio, no se puede eliminar.",
+                )
+            else:
+                messagebox.showerror("No se pudo eliminar", f"Error al eliminar:\n{e}")
+            return
+
+        messagebox.showinfo("Eliminar insumo", "Insumo eliminado correctamente.")
+        self._nuevo()
+        self._refrescar_listado()
 
     def _validar(self):
         """Validaciones mínimas de formulario.
