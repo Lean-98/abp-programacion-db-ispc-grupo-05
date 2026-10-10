@@ -11,7 +11,7 @@ from ui.ventana_principal import VentanaPrincipal
 
 def main():
     root = tk.Tk()
-    root.title("Turnero - Centro estética")
+    root.title("Turnero - Centro Estética")
     root.geometry("1000x600")
     root.minsize(800, 500)
 
