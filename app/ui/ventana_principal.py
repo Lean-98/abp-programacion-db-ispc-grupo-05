@@ -1,11 +1,12 @@
 """
 Ventana principal: arma el Notebook con las pestañas de navegación.
 
-Hito 2: app Tkinter navegable, sin conexión a la base de datos.
+App Tkinter conectada a PostgreSQL.
 """
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
+import datos
 from ui.abm_clientes import AbmClientes
 from ui.abm_insumos import AbmInsumos
 from ui.abm_profesionales import AbmProfesionales
@@ -31,8 +32,10 @@ class VentanaPrincipal:
         frame = ttk.Frame(self.notebook)
         self.notebook.add(frame, text="Turnos")
 
-        agenda = AgendaTurnos(frame, on_nuevo_turno=self._abrir_form_turno)
-        agenda.pack(fill="both", expand=True)
+        self.agenda = AgendaTurnos(
+            frame, on_nuevo_turno=self._abrir_form_turno, on_editar_turno=self._abrir_form_turno
+        )
+        self.agenda.pack(fill="both", expand=True)
 
     def _agregar_pestana_clientes(self):
         frame = ttk.Frame(self.notebook)
@@ -62,10 +65,21 @@ class VentanaPrincipal:
         abm = AbmInsumos(frame)
         abm.pack(fill="both", expand=True)
 
-    def _abrir_form_turno(self, turno=None):
-        """Abre el formulario de alta/edición de turno como ventana modal."""
+    def _abrir_form_turno(self, turno_id=None):
+        """Abre el formulario de alta/edición de turno como ventana modal.
+
+        turno_id: id del turno a editar, o None para dar de alta uno nuevo.
+        """
+        turno = None
+        if turno_id is not None:
+            try:
+                turno = datos.obtener_turno(turno_id)
+            except datos.ErrorBaseDeDatos as e:
+                messagebox.showerror("Error de conexión", f"No se pudo leer el turno:\n{e}")
+                return
+
         ventana = tk.Toplevel(self.root)
         ventana.title("Nuevo turno" if turno is None else "Editar turno")
         ventana.transient(self.root)
         ventana.grab_set()
-        FormTurno(ventana, turno=turno)
+        FormTurno(ventana, turno=turno, on_guardado=self.agenda._refrescar_listado)
