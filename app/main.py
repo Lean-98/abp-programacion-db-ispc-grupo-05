@@ -1,7 +1,7 @@
 """
 Punto de entrada de la aplicación.
 
-Hito 2: arma la interfaz gráfica navegable, sin conexión a la base de datos.
+Hito 2: arma la interfaz gráfica navegable,  sin conexión a la base de datos.
 La conexión real y el acceso a datos se incorporan en el Hito 3.
 """
 import tkinter as tk
