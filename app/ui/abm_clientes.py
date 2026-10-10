@@ -1,21 +1,20 @@
 """
-ABM de clientes.
+ABM de clientes — conectado a PostgreSQL vía datos.py.
 
 Esta es la pantalla patrón: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar. Sirve de
 modelo para las pantallas de Profesionales, Servicios e Insumos (mismo
 esqueleto, cambiando columnas y campos).
 
-Hito 2: solo interfaz visual, sin conexión a la base ni datos de prueba.
-El Treeview arranca vacío; se completa en el Hito 3 con
-datos.listar_clientes() / datos.buscar_clientes(texto). Guardar y
-Eliminar están simulados, no persisten nada todavía.
+Sin validación de formulario a propósito: eso lo centraliza Tomás en
+validaciones.py y se enchufa acá cuando esté listo (ver _guardar).
 
 Responsable: Leandro Piazza (Interfaz).
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+import datos
 from ui.widgets_comunes import campo_formulario, crear_treeview
 
 
@@ -51,6 +50,7 @@ class AbmClientes(ttk.Frame):
 
         self._armar_listado(contenedor)
         self._armar_formulario(contenedor)
+        self._refrescar_listado()
 
     # --- Listado (izquierda) ---
 
@@ -95,18 +95,72 @@ class AbmClientes(ttk.Frame):
             side="left", padx=(4, 0)
         )
 
-    # --- Acciones (simuladas en Hito 2, sin persistencia real) ---
+    # --- Listado: traer datos reales ---
+
+    def _refrescar_listado(self, filas=None):
+        """Vuelve a llenar el Treeview. Si no le pasan filas, trae todos
+        los clientes de la base."""
+        self.tree.delete(*self.tree.get_children())
+        try:
+            if filas is None:
+                filas = datos.listar_clientes()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudo conectar a la base de datos:\n{e}"
+            )
+            return
+
+        for fila in filas:
+            self.tree.insert(
+                "", "end", iid=str(fila["id"]),
+                values=(
+                    fila["nombre"],
+                    fila["apellido"],
+                    fila["dni"],
+                    fila["telefono"] or "",
+                ),
+            )
+
+    # --- Acciones ---
 
     def _buscar(self):
-        # Hito 3: reemplazar por datos.buscar_clientes(self.entry_busqueda.get())
-        messagebox.showinfo("Buscar", "Sin datos todavía: se completa en el Hito 3.")
+        texto = self.entry_busqueda.get().strip()
+        try:
+            filas = datos.buscar_clientes(texto) if texto else datos.listar_clientes()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo buscar:\n{e}")
+            return
+        self._refrescar_listado(filas)
 
     def _on_seleccionar(self, event=None):
         seleccion = self.tree.selection()
         if not seleccion:
             return
-        self.cliente_seleccionado_id = seleccion[0]
-        # Hito 3: completar los entry con datos.obtener_cliente(id) acá.
+
+        cliente_id = int(seleccion[0])
+        try:
+            cliente = datos.obtener_cliente(cliente_id)
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo leer el cliente:\n{e}")
+            return
+        if cliente is None:
+            return
+
+        self.cliente_seleccionado_id = cliente_id
+        self.entry_nombre.delete(0, tk.END)
+        self.entry_nombre.insert(0, cliente["nombre"] or "")
+        self.entry_apellido.delete(0, tk.END)
+        self.entry_apellido.insert(0, cliente["apellido"] or "")
+        self.entry_dni.delete(0, tk.END)
+        self.entry_dni.insert(0, cliente["dni"] or "")
+        self.entry_telefono.delete(0, tk.END)
+        self.entry_telefono.insert(0, cliente["telefono"] or "")
+        self.entry_direccion.delete(0, tk.END)
+        self.entry_direccion.insert(0, cliente["direccion"] or "")
+        self.entry_mail.delete(0, tk.END)
+        self.entry_mail.insert(0, cliente["mail"] or "")
+        self.entry_rol.delete(0, tk.END)
+        self.entry_rol.insert(0, cliente["rol"] or "")
 
     def _nuevo(self):
         self.cliente_seleccionado_id = None
@@ -115,15 +169,33 @@ class AbmClientes(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-        errores = self._validar()
-        if errores:
-            messagebox.showerror("Datos inválidos", "\n".join(errores))
+        # Sin validación de formulario a propósito (ver docstring del
+        # módulo) — acá se engancha validaciones.py cuando esté listo.
+        nombre = self.entry_nombre.get().strip()
+        apellido = self.entry_apellido.get().strip()
+        dni = self.entry_dni.get().strip()
+        telefono = self.entry_telefono.get().strip() or None
+        direccion = self.entry_direccion.get().strip() or None
+        mail = self.entry_mail.get().strip() or None
+        rol = self.entry_rol.get().strip() or None
+
+        try:
+            if self.cliente_seleccionado_id is None:
+                datos.crear_cliente(nombre, apellido, dni, telefono, direccion, mail, rol)
+                mensaje = "Cliente creado correctamente."
+            else:
+                datos.actualizar_cliente(
+                    self.cliente_seleccionado_id, nombre, apellido, dni,
+                    telefono, direccion, mail, rol,
+                )
+                mensaje = "Cliente actualizado correctamente."
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("No se pudo guardar", f"Error al guardar el cliente:\n{e}")
             return
 
-        # Hito 3: acá va datos.crear_cliente(...) / datos.actualizar_cliente(...)
-        messagebox.showinfo(
-            "Guardar cliente", "Cliente guardado (simulado, sin persistencia todavía)."
-        )
+        messagebox.showinfo("Guardar cliente", mensaje)
+        self._nuevo()
+        self._refrescar_listado()
 
     def _eliminar(self):
         if not self.cliente_seleccionado_id:
@@ -131,31 +203,25 @@ class AbmClientes(ttk.Frame):
             return
 
         nombre = self.entry_nombre.get().strip() or "el cliente seleccionado"
-        if messagebox.askyesno(
+        if not messagebox.askyesno(
             "Eliminar cliente", f"¿Confirmás que querés eliminar a {nombre}?"
         ):
-            # Hito 3: acá va datos.eliminar_cliente(self.cliente_seleccionado_id)
-            self.tree.delete(self.cliente_seleccionado_id)
-            self._nuevo()
-            messagebox.showinfo("Eliminar cliente", "Cliente eliminado (simulado).")
+            return
 
-    def _validar(self):
-        """Validaciones mínimas de formulario.
+        try:
+            datos.eliminar_cliente(self.cliente_seleccionado_id)
+        except datos.ErrorBaseDeDatos as e:
+            # ON DELETE RESTRICT: no se puede borrar un cliente con turnos
+            # asociados. Mismo patrón reutilizable para los demás ABM.
+            if "foreign key" in str(e).lower():
+                messagebox.showerror(
+                    "No se pudo eliminar",
+                    "Ese cliente tiene turnos asociados, no se puede eliminar.",
+                )
+            else:
+                messagebox.showerror("No se pudo eliminar", f"Error al eliminar:\n{e}")
+            return
 
-        Hito 3: reemplazar por validaciones.py (Tomás) cuando esté
-        disponible, para reutilizar la misma lógica en todos los ABM.
-        """
-        errores = []
-
-        if not self.entry_nombre.get().strip():
-            errores.append("El nombre es obligatorio.")
-        if not self.entry_apellido.get().strip():
-            errores.append("El apellido es obligatorio.")
-
-        dni = self.entry_dni.get().strip()
-        if not dni:
-            errores.append("El DNI es obligatorio.")
-        elif not dni.isdigit():
-            errores.append("El DNI debe ser numérico.")
-
-        return errores
+        messagebox.showinfo("Eliminar cliente", "Cliente eliminado correctamente.")
+        self._nuevo()
+        self._refrescar_listado()
