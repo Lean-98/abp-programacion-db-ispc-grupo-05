@@ -15,6 +15,7 @@ services:
       # SOLO la primera vez que se crea el volumen (si ya existen datos,
       # se ignora; para forzar una recarga hay que "docker compose down -v").
       - ./docs/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./docs/roles.sql:/docker-entrypoint-initdb.d/02-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-turnero} -d ${POSTGRES_DB:-turnero}"]
       interval: 5s
