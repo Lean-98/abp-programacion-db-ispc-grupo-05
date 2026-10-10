@@ -1,18 +1,19 @@
 """
-Agenda de turnos: listado con filtros.
+Agenda de turnos — conectada a PostgreSQL vía datos.py.
 
-Hito 2: solo interfaz visual, sin conexión a la base ni datos de prueba.
-El Treeview se arma vacío; se completa en el Hito 3 con
-datos.listar_turnos_detalle() (el SELECT con los JOIN a clientes,
-profesionales, tipo_pagos, turno_servicios y servicios). Esta pantalla
-no debe mostrar IDs, solo nombres — es el requisito de la consulta
+El Treeview se llena con datos.listar_turnos_detalle(), la consulta con
+los JOIN a clientes, profesionales, turno_servicios y servicios. Esta
+pantalla no muestra IDs, solo nombres — es el requisito de la consulta
 combinada que pide la consigna.
 
 Responsable: Nicolás Rivero (Interfaz).
 """
+from datetime import datetime
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+import datos
 from ui.widgets_comunes import crear_treeview
 
 
@@ -36,12 +37,13 @@ class AgendaTurnos(ttk.Frame):
         self._armar_filtros()
         self._armar_treeview()
         self._armar_botones()
+        self._refrescar_listado()
 
     def _armar_filtros(self):
         frame_filtros = ttk.Frame(self)
         frame_filtros.pack(fill="x", padx=8, pady=(8, 4))
 
-        ttk.Label(frame_filtros, text="Fecha:").pack(side="left")
+        ttk.Label(frame_filtros, text="Fecha (DD/MM/AAAA):").pack(side="left")
         self.entry_fecha = ttk.Entry(frame_filtros, width=12)
         self.entry_fecha.pack(side="left", padx=(4, 16))
 
@@ -70,15 +72,55 @@ class AgendaTurnos(ttk.Frame):
             side="left", padx=(4, 0)
         )
 
-    # --- Acciones (simuladas en Hito 2, sin persistencia real) ---
+    # --- Listado: traer datos reales ---
+
+    def _refrescar_listado(self, filas=None, fecha=None, cliente=None):
+        self.tree.delete(*self.tree.get_children())
+        try:
+            if filas is None:
+                filas = datos.listar_turnos_detalle(fecha=fecha, cliente=cliente)
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudo conectar a la base de datos:\n{e}"
+            )
+            return
+
+        for fila in filas:
+            self.tree.insert(
+                "", "end", iid=str(fila["id"]),
+                values=(
+                    fila["fecha"].strftime("%d/%m/%Y") if fila["fecha"] else "",
+                    fila["hora_inicio"].strftime("%H:%M") if fila["hora_inicio"] else "",
+                    fila["cliente"],
+                    fila["profesional"],
+                    fila["servicios"] or "",
+                    fila["estado"],
+                    fila["precio_final"] if fila["precio_final"] is not None else "",
+                ),
+            )
+
+    # --- Acciones ---
 
     def _filtrar(self):
-        # Hito 3: reemplazar por datos.listar_turnos_detalle(fecha=..., cliente=...)
-        messagebox.showinfo("Filtro", "Sin datos todavía: se completa en el Hito 3.")
+        fecha_texto = self.entry_fecha.get().strip()
+        cliente_texto = self.entry_cliente.get().strip() or None
+
+        fecha = None
+        if fecha_texto:
+            try:
+                fecha = datetime.strptime(fecha_texto, "%d/%m/%Y").date()
+            except ValueError:
+                messagebox.showerror(
+                    "Fecha inválida", "La fecha debe tener el formato DD/MM/AAAA."
+                )
+                return
+
+        self._refrescar_listado(fecha=fecha, cliente=cliente_texto)
 
     def _limpiar_filtro(self):
         self.entry_fecha.delete(0, tk.END)
         self.entry_cliente.delete(0, tk.END)
+        self._refrescar_listado()
 
     def _nuevo_turno(self):
         if self.on_nuevo_turno:
@@ -90,15 +132,24 @@ class AgendaTurnos(ttk.Frame):
             messagebox.showwarning("Editar turno", "Seleccioná un turno de la lista.")
             return
         if self.on_editar_turno:
-            self.on_editar_turno(seleccion[0])
+            self.on_editar_turno(int(seleccion[0]))
 
     def _eliminar_turno(self):
         seleccion = self.tree.selection()
         if not seleccion:
             messagebox.showwarning("Eliminar turno", "Seleccioná un turno de la lista.")
             return
-        if messagebox.askyesno(
+
+        if not messagebox.askyesno(
             "Eliminar turno", "¿Confirmás que querés eliminar el turno seleccionado?"
         ):
-            self.tree.delete(seleccion[0])
-            messagebox.showinfo("Eliminar turno", "Turno eliminado (simulado).")
+            return
+
+        try:
+            datos.eliminar_turno(int(seleccion[0]))
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("No se pudo eliminar", f"Error al eliminar el turno:\n{e}")
+            return
+
+        messagebox.showinfo("Eliminar turno", "Turno eliminado correctamente.")
+        self._refrescar_listado()
