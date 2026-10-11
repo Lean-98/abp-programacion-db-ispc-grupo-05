@@ -4,8 +4,7 @@ ABM de profesionales — conectado a PostgreSQL vía datos.py.
 Mismo patrón que ui/abm_clientes.py: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar.
 
-Sin validación de formulario a propósito: eso lo centraliza Tomás en
-validaciones.py y se enchufa acá cuando esté listo.
+Validación de formulario centralizada en validaciones.py (Tomás).
 
 Responsable: Nicolás Rivero (Interfaz).
 """
@@ -153,7 +152,6 @@ class AbmProfesionales(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-<<<<<<< HEAD
         errores = []
 
         try:
@@ -164,7 +162,7 @@ class AbmProfesionales(ttk.Frame):
         try:
             validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
         except ValueError as e:
-            errores.append(f"• {e}")      
+            errores.append(f"• {e}")
 
         try:
             campo_obligatorio(self.entry_apellido.get(), "Apellido")
@@ -174,14 +172,15 @@ class AbmProfesionales(ttk.Frame):
         try:
             validar_longitud_max(self.entry_apellido.get(), "Apellido", 50)
         except ValueError as e:
-            errores.append(f"• {e}")  
+            errores.append(f"• {e}")
 
         if errores:
             mensaje_final = "\n".join(errores)
-            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
-=======
-        # Sin validación de formulario a propósito (ver docstring del
-        # módulo) — acá se engancha validaciones.py cuando esté listo.
+            messagebox.showerror(
+                "Errores en el formulario", f"Por favor, corregí lo siguiente:\n\n{mensaje_final}"
+            )
+            return
+
         nombre = self.entry_nombre.get().strip()
         apellido = self.entry_apellido.get().strip()
         especialidad = self.entry_especialidad.get().strip() or None
@@ -198,7 +197,6 @@ class AbmProfesionales(ttk.Frame):
                 mensaje = "Profesional actualizado correctamente."
         except datos.ErrorBaseDeDatos as e:
             messagebox.showerror("No se pudo guardar", f"Error al guardar el profesional:\n{e}")
->>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907
             return
 
         messagebox.showinfo("Guardar profesional", mensaje)

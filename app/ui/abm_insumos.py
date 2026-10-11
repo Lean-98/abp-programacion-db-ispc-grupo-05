@@ -4,10 +4,9 @@ ABM de insumos — conectado a PostgreSQL vía datos.py.
 Mismo patrón que ui/abm_clientes.py: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar.
 
-Sin validación de formulario a propósito: eso lo centraliza Tomás en
-validaciones.py y se enchufa acá cuando esté listo. El único control que
-queda es evitar que un texto no numérico o una fecha mal escrita rompan
-la conversión antes de llegar a la base (no es una regla de negocio).
+Validación de formulario centralizada en validaciones.py (Tomás). El
+formato de la fecha se controla acá mismo (no es una regla de negocio,
+es evitar que un texto mal escrito rompa la conversión).
 
 Responsable: Nicolás Rivero (Interfaz).
 """
@@ -197,17 +196,21 @@ class AbmInsumos(ttk.Frame):
         try:
             validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
         except ValueError as e:
-            errores.append(f"• {e}")    
-
-        try:
-            campo_numerico(self.entry_codigo_barra.get(), "Código de barra")
-        except ValueError as e:
             errores.append(f"• {e}")
 
-        try:
-            validar_longitud_max(self.entry_codigo_barra.get(), "Código de barra", 20)
-        except ValueError as e:
-            errores.append(f"• {e}")    
+        # Código de barras es opcional (columna nullable en la base),
+        # así que solo se valida si se cargó algo.
+        codigo_barra_texto = self.entry_codigo_barra.get().strip()
+        if codigo_barra_texto:
+            try:
+                campo_numerico(codigo_barra_texto, "Código de barra")
+            except ValueError as e:
+                errores.append(f"• {e}")
+
+            try:
+                validar_longitud_max(codigo_barra_texto, "Código de barra", 20)
+            except ValueError as e:
+                errores.append(f"• {e}")
 
         stock_validado = None
         try:
@@ -221,47 +224,37 @@ class AbmInsumos(ttk.Frame):
         except ValueError as e:
             errores.append(f"• {e}")
 
-        # --- MOSTRAR ERRORES CON JOIN ---
+        fecha_texto = self.entry_fecha_vencimiento.get().strip()
+        fecha_vencimiento = None
+        if fecha_texto:
+            try:
+                fecha_vencimiento = datetime.strptime(fecha_texto, "%d/%m/%Y").date()
+            except ValueError:
+                errores.append("• La fecha de vencimiento debe tener el formato DD/MM/AAAA.")
+
         if errores:
             mensaje_final = "\n".join(errores)
-            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+            messagebox.showerror(
+                "Errores en el formulario", f"Por favor, corregí lo siguiente:\n\n{mensaje_final}"
+            )
             return
 
-    def _guardar(self):
-        # Sin validación de formulario a propósito (ver docstring del
-        # módulo) — acá se engancha validaciones.py cuando esté listo.
         tipo_insumo_id = self.tipos_insumo.get(self.combo_tipo_insumo.get())
         nombre = self.entry_nombre.get().strip()
         descripcion = self.text_descripcion.get("1.0", tk.END).strip() or None
-        precio_texto = self.entry_precio.get().strip()
-        codigo_barra = self.entry_codigo_barra.get().strip() or None
-        fecha_texto = self.entry_fecha_vencimiento.get().strip()
-        stock_texto = self.entry_stock.get().strip()
-
-        try:
-            precio = float(precio_texto) if precio_texto else None
-            stock = int(stock_texto) if stock_texto else 0
-            fecha_vencimiento = (
-                datetime.strptime(fecha_texto, "%d/%m/%Y").date() if fecha_texto else None
-            )
-        except ValueError:
-            messagebox.showerror(
-                "Datos inválidos",
-                "Revisá el precio, el stock (números) y la fecha de vencimiento (DD/MM/AAAA).",
-            )
-            return
+        codigo_barra = codigo_barra_texto or None
 
         try:
             if self.insumo_seleccionado_id is None:
                 datos.crear_insumo(
-                    tipo_insumo_id, nombre, descripcion, precio,
-                    codigo_barra, fecha_vencimiento, stock,
+                    tipo_insumo_id, nombre, descripcion, precio_validado,
+                    codigo_barra, fecha_vencimiento, stock_validado,
                 )
                 mensaje = "Insumo creado correctamente."
             else:
                 datos.actualizar_insumo(
                     self.insumo_seleccionado_id, tipo_insumo_id, nombre, descripcion,
-                    precio, codigo_barra, fecha_vencimiento, stock,
+                    precio_validado, codigo_barra, fecha_vencimiento, stock_validado,
                 )
                 mensaje = "Insumo actualizado correctamente."
         except datos.ErrorBaseDeDatos as e:
@@ -281,12 +274,6 @@ class AbmInsumos(ttk.Frame):
         if not messagebox.askyesno(
             "Eliminar insumo", f"¿Confirmás que querés eliminar {nombre}?"
         ):
-<<<<<<< HEAD
-            # Hito 3: acá va datos.eliminar_insumo(self.insumo_seleccionado_id)
-            self.tree.delete(self.insumo_seleccionado_id)
-            self._nuevo()
-            messagebox.showinfo("Eliminar insumo", "Insumo eliminado (simulado).")
-=======
             return
 
         try:
@@ -304,37 +291,3 @@ class AbmInsumos(ttk.Frame):
         messagebox.showinfo("Eliminar insumo", "Insumo eliminado correctamente.")
         self._nuevo()
         self._refrescar_listado()
-
-    def _validar(self):
-        """Validaciones mínimas de formulario.
-
-        Hito 3: reemplazar por validaciones.py (Tomás) cuando esté
-        disponible, para reutilizar la misma lógica en todos los ABM.
-        """
-        errores = []
-
-        if not self.entry_nombre.get().strip():
-            errores.append("El nombre es obligatorio.")
-        if not self.combo_tipo_insumo.get().strip():
-            errores.append("El tipo de insumo es obligatorio.")
-
-        precio = self.entry_precio.get().strip()
-        if not precio:
-            errores.append("El precio es obligatorio.")
-        else:
-            try:
-                if float(precio) < 0:
-                    errores.append("El precio no puede ser negativo.")
-            except ValueError:
-                errores.append("El precio debe ser un número.")
-
-        stock = self.entry_stock.get().strip()
-        if stock and (not stock.isdigit()):
-            errores.append("El stock debe ser un número entero.")
-
-        codigo_barra = self.entry_codigo_barra.get().strip()
-        if codigo_barra and not codigo_barra.isdigit():
-            errores.append("El código de barras debe ser numérico.")
-
-        return errores
->>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907

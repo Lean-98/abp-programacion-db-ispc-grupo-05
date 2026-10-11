@@ -4,10 +4,7 @@ ABM de servicios — conectado a PostgreSQL vía datos.py.
 Mismo patrón que ui/abm_clientes.py: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar.
 
-Sin validación de formulario a propósito: eso lo centraliza Tomás en
-validaciones.py y se enchufa acá cuando esté listo. El único control que
-queda es evitar que un texto no numérico en duración/precio rompa la
-conversión antes de llegar a la base (no es una regla de negocio).
+Validación de formulario centralizada en validaciones.py (Tomás).
 
 Responsable: Nicolás Rivero (Interfaz).
 """
@@ -127,7 +124,7 @@ class AbmServicios(ttk.Frame):
                 ),
             )
 
-    # --- Acciones (simuladas en Hito 2, sin persistencia real) ---
+    # --- Acciones ---
 
     def _buscar(self):
         texto = self.entry_busqueda.get().strip()
@@ -173,9 +170,8 @@ class AbmServicios(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-<<<<<<< HEAD
         errores = []
-        
+
         try:
             campo_obligatorio(self.combo_tipo_servicio.get(), "Tipo de servicio")
         except ValueError as e:
@@ -189,7 +185,7 @@ class AbmServicios(ttk.Frame):
         try:
             validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
         except ValueError as e:
-            errores.append(f"• {e}")    
+            errores.append(f"• {e}")
 
         try:
             campo_obligatorio(self.entry_duracion.get(), "Duración")
@@ -200,13 +196,13 @@ class AbmServicios(ttk.Frame):
         try:
             duracion_validada = numero_entero_positivo(self.entry_duracion.get(), "Duración")
         except ValueError as e:
-            errores.append(f"• {e}")    
+            errores.append(f"• {e}")
 
         try:
             campo_obligatorio(self.entry_precio.get(), "Precio")
         except ValueError as e:
             errores.append(f"• {e}")
-        
+
         precio_validado = None
         try:
             precio_validado = numero_decimal_positivo(self.entry_precio.get(), "Precio")
@@ -215,32 +211,25 @@ class AbmServicios(ttk.Frame):
 
         if errores:
             mensaje_final = "\n".join(errores)
-            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
-=======
-        # Sin validación de formulario a propósito (ver docstring del
-        # módulo) — acá se engancha validaciones.py cuando esté listo.
+            messagebox.showerror(
+                "Errores en el formulario", f"Por favor, corregí lo siguiente:\n\n{mensaje_final}"
+            )
+            return
+
         tipo_servicio_id = self.tipos_servicio.get(self.combo_tipo_servicio.get())
         nombre = self.entry_nombre.get().strip()
         descripcion = self.text_descripcion.get("1.0", tk.END).strip() or None
-        duracion_texto = self.entry_duracion.get().strip()
-        precio_texto = self.entry_precio.get().strip()
-
-        try:
-            duracion = int(duracion_texto) if duracion_texto else None
-            precio = float(precio_texto) if precio_texto else None
-        except ValueError:
-            messagebox.showerror("Datos inválidos", "Duración y precio deben ser números.")
->>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907
-            return
 
         try:
             if self.servicio_seleccionado_id is None:
-                datos.crear_servicio(tipo_servicio_id, nombre, descripcion, duracion, precio)
+                datos.crear_servicio(
+                    tipo_servicio_id, nombre, descripcion, duracion_validada, precio_validado
+                )
                 mensaje = "Servicio creado correctamente."
             else:
                 datos.actualizar_servicio(
                     self.servicio_seleccionado_id, tipo_servicio_id, nombre,
-                    descripcion, duracion, precio,
+                    descripcion, duracion_validada, precio_validado,
                 )
                 mensaje = "Servicio actualizado correctamente."
         except datos.ErrorBaseDeDatos as e:
