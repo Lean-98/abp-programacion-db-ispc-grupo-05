@@ -15,6 +15,7 @@ from tkinter import ttk, messagebox
 
 from ui.widgets_comunes import campo_formulario, combo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio, numero_decimal_positivo, numero_entero_positivo, campo_numerico, validar_longitud_max
 
 COLUMNAS = [
     ("nombre", "Nombre", 150),
@@ -113,15 +114,50 @@ class AbmInsumos(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-        errores = self._validar()
-        if errores:
-            messagebox.showerror("Datos inválidos", "\n".join(errores))
-            return
+        errores = []
 
-        # Hito 3: acá va datos.crear_insumo(...) / datos.actualizar_insumo(...)
-        messagebox.showinfo(
-            "Guardar insumo", "Insumo guardado (simulado, sin persistencia todavía)."
-        )
+        try:
+            campo_obligatorio(self.combo_tipo_insumo.get(), "Tipo de insumo")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.entry_nombre.get(), "Nombre")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")    
+
+        try:
+            campo_numerico(self.entry_codigo_barra.get(), "Código de barra")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_codigo_barra.get(), "Código de barra", 20)
+        except ValueError as e:
+            errores.append(f"• {e}")    
+
+        stock_validado = None
+        try:
+            stock_validado = numero_entero_positivo(self.entry_stock.get(), "Stock")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        precio_validado = None
+        try:
+            precio_validado = numero_decimal_positivo(self.entry_precio.get(), "Precio")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        # --- MOSTRAR ERRORES CON JOIN ---
+        if errores:
+            mensaje_final = "\n".join(errores)
+            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+            return
 
     def _eliminar(self):
         if not self.insumo_seleccionado_id:
@@ -136,36 +172,3 @@ class AbmInsumos(ttk.Frame):
             self.tree.delete(self.insumo_seleccionado_id)
             self._nuevo()
             messagebox.showinfo("Eliminar insumo", "Insumo eliminado (simulado).")
-
-    def _validar(self):
-        """Validaciones mínimas de formulario.
-
-        Hito 3: reemplazar por validaciones.py (Tomás) cuando esté
-        disponible, para reutilizar la misma lógica en todos los ABM.
-        """
-        errores = []
-
-        if not self.entry_nombre.get().strip():
-            errores.append("El nombre es obligatorio.")
-        if not self.combo_tipo_insumo.get().strip():
-            errores.append("El tipo de insumo es obligatorio.")
-
-        precio = self.entry_precio.get().strip()
-        if not precio:
-            errores.append("El precio es obligatorio.")
-        else:
-            try:
-                if float(precio) < 0:
-                    errores.append("El precio no puede ser negativo.")
-            except ValueError:
-                errores.append("El precio debe ser un número.")
-
-        stock = self.entry_stock.get().strip()
-        if stock and (not stock.isdigit()):
-            errores.append("El stock debe ser un número entero.")
-
-        codigo_barra = self.entry_codigo_barra.get().strip()
-        if codigo_barra and not codigo_barra.isdigit():
-            errores.append("El código de barras debe ser numérico.")
-
-        return errores

@@ -14,6 +14,8 @@ from tkinter import ttk, messagebox
 
 from ui.widgets_comunes import campo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio, validar_longitud_max
+
 
 COLUMNAS = [
     ("nombre", "Nombre", 130),
@@ -104,9 +106,31 @@ class AbmProfesionales(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-        errores = self._validar()
+        errores = []
+
+        try:
+            campo_obligatorio(self.entry_nombre.get(), "Nombre")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")      
+
+        try:
+            campo_obligatorio(self.entry_apellido.get(), "Apellido")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_apellido.get(), "Apellido", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")  
+
         if errores:
-            messagebox.showerror("Datos inválidos", "\n".join(errores))
+            mensaje_final = "\n".join(errores)
+            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
             return
 
         # Hito 3: acá va datos.crear_profesional(...) / datos.actualizar_profesional(...)
@@ -131,17 +155,3 @@ class AbmProfesionales(ttk.Frame):
             self._nuevo()
             messagebox.showinfo("Eliminar profesional", "Profesional eliminado (simulado).")
 
-    def _validar(self):
-        """Validaciones mínimas de formulario.
-
-        Hito 3: reemplazar por validaciones.py (Tomás) cuando esté
-        disponible, para reutilizar la misma lógica en todos los ABM.
-        """
-        errores = []
-
-        if not self.entry_nombre.get().strip():
-            errores.append("El nombre es obligatorio.")
-        if not self.entry_apellido.get().strip():
-            errores.append("El apellido es obligatorio.")
-
-        return errores

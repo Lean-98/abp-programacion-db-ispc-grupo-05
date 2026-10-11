@@ -17,6 +17,8 @@ from tkinter import ttk, messagebox
 import datos
 from ui.widgets_comunes import campo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio, campo_numerico, validar_longitud_max
+
 
 COLUMNAS = [
     ("nombre", "Nombre", 120),
@@ -169,8 +171,6 @@ class AbmClientes(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
-        # Sin validación de formulario a propósito (ver docstring del
-        # módulo) — acá se engancha validaciones.py cuando esté listo.
         nombre = self.entry_nombre.get().strip()
         apellido = self.entry_apellido.get().strip()
         dni = self.entry_dni.get().strip()
@@ -178,6 +178,50 @@ class AbmClientes(ttk.Frame):
         direccion = self.entry_direccion.get().strip() or None
         mail = self.entry_mail.get().strip() or None
         rol = self.entry_rol.get().strip() or None
+
+        errores = []
+                
+        try:
+            campo_obligatorio(self.entry_nombre.get(), "Nombre")
+        except ValueError as e:
+            errores.append(f"• {e}")
+        
+        try:
+            validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")  
+                
+        try:
+            campo_obligatorio(self.entry_apellido.get(), "Apellido")
+        except ValueError as e:
+            errores.append(f"• {e}")
+        
+        try:
+            validar_longitud_max(self.entry_apellido.get(), "Apellido", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")  
+        
+        try:
+            campo_obligatorio(self.entry_dni.get(), "Dni")
+        except ValueError as e:
+            errores.append(f"• {e}")
+        
+        try:
+            validar_longitud_max(self.entry_dni.get(), "Dni", 10)
+        except ValueError as e:
+            errores.append(f"• {e}")  
+        
+        try:
+            campo_numerico(self.entry_dni.get(), "Dni")
+        except ValueError as e:
+            errores.append(f"• {e}")
+                
+        
+        if errores:
+                mensaje_final = "\n".join(errores)
+                messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+                return
+        
 
         try:
             if self.cliente_seleccionado_id is None:
@@ -193,6 +237,7 @@ class AbmClientes(ttk.Frame):
             messagebox.showerror("No se pudo guardar", f"Error al guardar el cliente:\n{e}")
             return
 
+        
         messagebox.showinfo("Guardar cliente", mensaje)
         self._nuevo()
         self._refrescar_listado()

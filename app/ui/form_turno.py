@@ -14,6 +14,7 @@ from tkinter import ttk, messagebox
 
 from ui.widgets_comunes import campo_formulario, combo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio
 
 # Estados posibles de un turno (valor de dominio fijo, no es mockdata de la app).
 ESTADOS = ["pendiente", "confirmado", "completado", "cancelado"]
@@ -119,7 +120,40 @@ class FormTurno(ttk.Frame):
         pass
 
     def _guardar(self):
-        # Hito 3: acá van las validaciones (validaciones.py) y el guardado real
+        
+        errores = []
+
+        try:
+            campo_obligatorio(self.combo_cliente.get(), "Cliente")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.combo_profesional.get(), "Profesional")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.combo_tipo_pago.get(), "Tipo de pago")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.entry_fecha.get(), "Fecha")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.combo_estado.get(), "Estado")
+        except ValueError as e:
+            errores.append(f"• {e}")
+        
+        if errores:
+            mensaje_final = "\n".join(errores)
+            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+            return
+                
+        # Hito 3: acá va el guardado real
         # vía datos.crear_turno(...) / datos.actualizar_turno(...).
         messagebox.showinfo(
             "Guardar turno", "Turno guardado (simulado, sin persistencia todavía)."
