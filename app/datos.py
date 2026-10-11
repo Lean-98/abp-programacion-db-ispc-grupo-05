@@ -28,6 +28,7 @@ from conexion import ErrorBaseDeDatos, obtener_cursor  # noqa: F401  (re-exporta
 # Clientes
 # =================================================================
 
+
 def listar_clientes():
     with obtener_cursor() as cur:
         cur.execute("""
@@ -82,6 +83,231 @@ def actualizar_cliente(cliente_id, nombre, apellido, dni, telefono, direccion, m
 def eliminar_cliente(cliente_id):
     with obtener_cursor(commit=True) as cur:
         cur.execute("DELETE FROM clientes WHERE id = %s", (cliente_id,))
+
+
+# =================================================================
+# Profesionales
+# =================================================================
+
+def listar_profesionales():
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT id, nombre, apellido, especialidad, activo
+            FROM profesionales
+            ORDER BY apellido, nombre
+        """)
+        return cur.fetchall()
+
+
+def buscar_profesionales(texto):
+    patron = f"%{texto}%"
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT id, nombre, apellido, especialidad, activo
+            FROM profesionales
+            WHERE nombre ILIKE %s OR apellido ILIKE %s OR especialidad ILIKE %s
+            ORDER BY apellido, nombre
+        """, (patron, patron, patron))
+        return cur.fetchall()
+
+
+def obtener_profesional(profesional_id):
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT id, nombre, apellido, especialidad, activo
+            FROM profesionales WHERE id = %s
+        """, (profesional_id,))
+        return cur.fetchone()
+
+
+def crear_profesional(nombre, apellido, especialidad, activo):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("""
+            INSERT INTO profesionales (nombre, apellido, especialidad, activo)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+        """, (nombre, apellido, especialidad, activo))
+        return cur.fetchone()["id"]
+
+
+def actualizar_profesional(profesional_id, nombre, apellido, especialidad, activo):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("""
+            UPDATE profesionales
+            SET nombre = %s, apellido = %s, especialidad = %s, activo = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (nombre, apellido, especialidad, activo, profesional_id))
+
+
+def eliminar_profesional(profesional_id):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("DELETE FROM profesionales WHERE id = %s", (profesional_id,))
+
+
+# =================================================================
+# Insumos (+ tipo_insumo)
+# =================================================================
+
+def listar_tipo_insumo():
+    with obtener_cursor() as cur:
+        cur.execute('SELECT id, nombre FROM tipo_insumo ORDER BY nombre')
+        return cur.fetchall()
+
+
+def listar_insumos():
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT i.id, i.nombre, i.descripcion, i.precio, i.codigo_barra,
+                   i.fecha_vencimiento, i.stock, i.tipo_insumo_id,
+                   ti.nombre AS tipo_insumo
+            FROM insumos i
+            JOIN tipo_insumo ti ON ti.id = i.tipo_insumo_id
+            ORDER BY i.nombre
+        """)
+        return cur.fetchall()
+
+
+def buscar_insumos(texto):
+    patron = f"%{texto}%"
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT i.id, i.nombre, i.descripcion, i.precio, i.codigo_barra,
+                   i.fecha_vencimiento, i.stock, i.tipo_insumo_id,
+                   ti.nombre AS tipo_insumo
+            FROM insumos i
+            JOIN tipo_insumo ti ON ti.id = i.tipo_insumo_id
+            WHERE i.nombre ILIKE %s OR i.codigo_barra ILIKE %s
+            ORDER BY i.nombre
+        """, (patron, patron))
+        return cur.fetchall()
+
+
+def obtener_insumo(insumo_id):
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT i.id, i.nombre, i.descripcion, i.precio, i.codigo_barra,
+                   i.fecha_vencimiento, i.stock, i.tipo_insumo_id,
+                   ti.nombre AS tipo_insumo
+            FROM insumos i
+            JOIN tipo_insumo ti ON ti.id = i.tipo_insumo_id
+            WHERE i.id = %s
+        """, (insumo_id,))
+        return cur.fetchone()
+
+
+def crear_insumo(tipo_insumo_id, nombre, descripcion, precio, codigo_barra,
+                  fecha_vencimiento, stock):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("""
+            INSERT INTO insumos (tipo_insumo_id, nombre, descripcion, precio,
+                                  codigo_barra, fecha_vencimiento, stock)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (tipo_insumo_id, nombre, descripcion, precio, codigo_barra,
+              fecha_vencimiento, stock))
+        return cur.fetchone()["id"]
+
+
+def actualizar_insumo(insumo_id, tipo_insumo_id, nombre, descripcion, precio,
+                       codigo_barra, fecha_vencimiento, stock):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("""
+            UPDATE insumos
+            SET tipo_insumo_id = %s, nombre = %s, descripcion = %s, precio = %s,
+                codigo_barra = %s, fecha_vencimiento = %s, stock = %s,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (tipo_insumo_id, nombre, descripcion, precio, codigo_barra,
+              fecha_vencimiento, stock, insumo_id))
+
+
+def eliminar_insumo(insumo_id):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("DELETE FROM insumos WHERE id = %s", (insumo_id,))
+
+
+# =================================================================
+# Servicios (+ tipo_servicio)
+# =================================================================
+
+def listar_tipo_servicio():
+    with obtener_cursor() as cur:
+        cur.execute('SELECT id, nombre FROM tipo_servicio ORDER BY nombre')
+        return cur.fetchall()
+
+
+def listar_servicios():
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT s.id, s.nombre, s.descripcion, s.duracion, s.precio,
+                   s.tipo_servicio_id, ts.nombre AS tipo_servicio
+            FROM servicios s
+            JOIN tipo_servicio ts ON ts.id = s.tipo_servicio_id
+            ORDER BY s.nombre
+        """)
+        return cur.fetchall()
+
+
+def buscar_servicios(texto):
+    patron = f"%{texto}%"
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT s.id, s.nombre, s.descripcion, s.duracion, s.precio,
+                   s.tipo_servicio_id, ts.nombre AS tipo_servicio
+            FROM servicios s
+            JOIN tipo_servicio ts ON ts.id = s.tipo_servicio_id
+            WHERE s.nombre ILIKE %s
+            ORDER BY s.nombre
+        """, (patron,))
+        return cur.fetchall()
+
+
+def obtener_servicio(servicio_id):
+    with obtener_cursor() as cur:
+        cur.execute("""
+            SELECT s.id, s.nombre, s.descripcion, s.duracion, s.precio,
+                   s.tipo_servicio_id, ts.nombre AS tipo_servicio
+            FROM servicios s
+            JOIN tipo_servicio ts ON ts.id = s.tipo_servicio_id
+            WHERE s.id = %s
+        """, (servicio_id,))
+        return cur.fetchone()
+
+
+def crear_servicio(tipo_servicio_id, nombre, descripcion, duracion, precio):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("""
+            INSERT INTO servicios (tipo_servicio_id, nombre, descripcion, duracion, precio)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+        """, (tipo_servicio_id, nombre, descripcion, duracion, precio))
+        return cur.fetchone()["id"]
+
+
+def actualizar_servicio(servicio_id, tipo_servicio_id, nombre, descripcion, duracion, precio):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("""
+            UPDATE servicios
+            SET tipo_servicio_id = %s, nombre = %s, descripcion = %s,
+                duracion = %s, precio = %s, updated_at = CURRENT_TIMESTAMP
+            WHERE id = %s
+        """, (tipo_servicio_id, nombre, descripcion, duracion, precio, servicio_id))
+
+
+def eliminar_servicio(servicio_id):
+    with obtener_cursor(commit=True) as cur:
+        cur.execute("DELETE FROM servicios WHERE id = %s", (servicio_id,))
+
+
+# =================================================================
+# Tipos de pago
+# =================================================================
+
+def listar_tipos_pago():
+    with obtener_cursor() as cur:
+        cur.execute('SELECT id, nombre FROM tipo_pagos ORDER BY nombre')
+        return cur.fetchall()
 
 
 # =================================================================

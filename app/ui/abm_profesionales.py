@@ -1,17 +1,18 @@
 """
-ABM de profesionales.
+ABM de profesionales — conectado a PostgreSQL vía datos.py.
 
 Mismo patrón que ui/abm_clientes.py: listado con búsqueda a la izquierda,
 formulario a la derecha, botones Nuevo / Guardar / Eliminar.
 
-Hito 2: solo interfaz visual, sin conexión a la base ni datos de prueba.
-El Treeview arranca vacío; se completa en el Hito 3 con
-datos.listar_profesionales() / datos.buscar_profesionales(texto).
-Guardar y Eliminar están simulados, no persisten nada todavía.
+Sin validación de formulario a propósito: eso lo centraliza Tomás en
+validaciones.py y se enchufa acá cuando esté listo.
+
+Responsable: Nicolás Rivero (Interfaz).
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
 
+import datos
 from ui.widgets_comunes import campo_formulario, crear_treeview
 
 from ui.validaciones import campo_obligatorio, validar_longitud_max
@@ -39,6 +40,7 @@ class AbmProfesionales(ttk.Frame):
 
         self._armar_listado(contenedor)
         self._armar_formulario(contenedor)
+        self._refrescar_listado()
 
     # --- Listado (izquierda) ---
 
@@ -84,18 +86,63 @@ class AbmProfesionales(ttk.Frame):
             side="left", padx=(4, 0)
         )
 
-    # --- Acciones (simuladas en Hito 2, sin persistencia real) ---
+    # --- Listado: traer datos reales ---
+
+    def _refrescar_listado(self, filas=None):
+        self.tree.delete(*self.tree.get_children())
+        try:
+            if filas is None:
+                filas = datos.listar_profesionales()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror(
+                "Error de conexión", f"No se pudo conectar a la base de datos:\n{e}"
+            )
+            return
+
+        for fila in filas:
+            self.tree.insert(
+                "", "end", iid=str(fila["id"]),
+                values=(
+                    fila["nombre"],
+                    fila["apellido"],
+                    fila["especialidad"] or "",
+                    "Sí" if fila["activo"] else "No",
+                ),
+            )
+
+    # --- Acciones ---
 
     def _buscar(self):
-        # Hito 3: reemplazar por datos.buscar_profesionales(self.entry_busqueda.get())
-        messagebox.showinfo("Buscar", "Sin datos todavía: se completa en el Hito 3.")
+        texto = self.entry_busqueda.get().strip()
+        try:
+            filas = datos.buscar_profesionales(texto) if texto else datos.listar_profesionales()
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo buscar:\n{e}")
+            return
+        self._refrescar_listado(filas)
 
     def _on_seleccionar(self, event=None):
         seleccion = self.tree.selection()
         if not seleccion:
             return
-        self.profesional_seleccionado_id = seleccion[0]
-        # Hito 3: completar los campos con datos.obtener_profesional(id) acá.
+
+        profesional_id = int(seleccion[0])
+        try:
+            profesional = datos.obtener_profesional(profesional_id)
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("Error de conexión", f"No se pudo leer el profesional:\n{e}")
+            return
+        if profesional is None:
+            return
+
+        self.profesional_seleccionado_id = profesional_id
+        self.entry_nombre.delete(0, tk.END)
+        self.entry_nombre.insert(0, profesional["nombre"] or "")
+        self.entry_apellido.delete(0, tk.END)
+        self.entry_apellido.insert(0, profesional["apellido"] or "")
+        self.entry_especialidad.delete(0, tk.END)
+        self.entry_especialidad.insert(0, profesional["especialidad"] or "")
+        self.var_activo.set(bool(profesional["activo"]))
 
     def _nuevo(self):
         self.profesional_seleccionado_id = None
@@ -106,6 +153,7 @@ class AbmProfesionales(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
+<<<<<<< HEAD
         errores = []
 
         try:
@@ -131,13 +179,31 @@ class AbmProfesionales(ttk.Frame):
         if errores:
             mensaje_final = "\n".join(errores)
             messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+=======
+        # Sin validación de formulario a propósito (ver docstring del
+        # módulo) — acá se engancha validaciones.py cuando esté listo.
+        nombre = self.entry_nombre.get().strip()
+        apellido = self.entry_apellido.get().strip()
+        especialidad = self.entry_especialidad.get().strip() or None
+        activo = self.var_activo.get()
+
+        try:
+            if self.profesional_seleccionado_id is None:
+                datos.crear_profesional(nombre, apellido, especialidad, activo)
+                mensaje = "Profesional creado correctamente."
+            else:
+                datos.actualizar_profesional(
+                    self.profesional_seleccionado_id, nombre, apellido, especialidad, activo,
+                )
+                mensaje = "Profesional actualizado correctamente."
+        except datos.ErrorBaseDeDatos as e:
+            messagebox.showerror("No se pudo guardar", f"Error al guardar el profesional:\n{e}")
+>>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907
             return
 
-        # Hito 3: acá va datos.crear_profesional(...) / datos.actualizar_profesional(...)
-        messagebox.showinfo(
-            "Guardar profesional",
-            "Profesional guardado (simulado, sin persistencia todavía).",
-        )
+        messagebox.showinfo("Guardar profesional", mensaje)
+        self._nuevo()
+        self._refrescar_listado()
 
     def _eliminar(self):
         if not self.profesional_seleccionado_id:
@@ -147,11 +213,24 @@ class AbmProfesionales(ttk.Frame):
             return
 
         nombre = self.entry_nombre.get().strip() or "el profesional seleccionado"
-        if messagebox.askyesno(
+        if not messagebox.askyesno(
             "Eliminar profesional", f"¿Confirmás que querés eliminar a {nombre}?"
         ):
-            # Hito 3: acá va datos.eliminar_profesional(self.profesional_seleccionado_id)
-            self.tree.delete(self.profesional_seleccionado_id)
-            self._nuevo()
-            messagebox.showinfo("Eliminar profesional", "Profesional eliminado (simulado).")
+            return
+
+        try:
+            datos.eliminar_profesional(self.profesional_seleccionado_id)
+        except datos.ErrorBaseDeDatos as e:
+            if "foreign key" in str(e).lower():
+                messagebox.showerror(
+                    "No se pudo eliminar",
+                    "Ese profesional tiene turnos asociados, no se puede eliminar.",
+                )
+            else:
+                messagebox.showerror("No se pudo eliminar", f"Error al eliminar:\n{e}")
+            return
+
+        messagebox.showinfo("Eliminar profesional", "Profesional eliminado correctamente.")
+        self._nuevo()
+        self._refrescar_listado()
 

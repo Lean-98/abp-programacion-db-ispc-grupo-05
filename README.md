@@ -55,7 +55,10 @@ pip install -r requirements.txt
 # primera vez, usando docs/schema.sql y docs/roles.sql)
 docker compose up -d
 
-# 4) Correr la aplicación
+# 4) Cargar los datos de prueba (opcional, carga manual)
+cat docs/seed.sql | docker compose exec -T db psql -U turnero -d turnero
+
+# 5) Correr la aplicación
 python3 app/main.py
 ```
 
