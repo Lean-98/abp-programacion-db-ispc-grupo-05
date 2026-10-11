@@ -48,7 +48,9 @@ INSERT INTO "clientes" ("nombre", "apellido", "dni", "telefono", "direccion", "m
   ('Camila', 'Pérez', '34567890', '3517890123', 'Obispo Trejo 345', 'camila.perez@example.com', 'VIP'),
   ('Bautista', 'Sánchez', '37123456', '3518901234', 'Illia 678', 'bautista.sanchez@example.com', 'cliente'),
   ('Emma', 'Díaz', '38234567', '3519012345', 'Caseros 901', 'emma.diaz@example.com', 'cliente'),
-  ('Thiago', 'Romero', '39345678', '3510123456', 'Humberto Primo 123', 'thiago.romero@example.com', 'cliente');
+  ('Thiago', 'Romero', '39345678', '3510123456', 'Humberto Primo 123', 'thiago.romero@example.com', 'cliente'),
+  ('Milena', 'Suárez', '40111222', '3511111111', 'Rondeau 456', 'milena.suarez@example.com', 'cliente'),
+  ('Ignacio', 'Castro', '40222333', '3512222222', 'Entre Ríos 789', 'ignacio.castro@example.com', 'cliente');
 
 -- -------------------------------------------------------------
 -- Profesionales (10)
