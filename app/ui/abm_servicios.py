@@ -17,6 +17,8 @@ from tkinter import ttk, messagebox
 import datos
 from ui.widgets_comunes import campo_formulario, combo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio, numero_decimal_positivo, numero_entero_positivo, validar_longitud_max
+
 
 COLUMNAS = [
     ("nombre", "Nombre", 150),
@@ -171,6 +173,50 @@ class AbmServicios(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
+<<<<<<< HEAD
+        errores = []
+        
+        try:
+            campo_obligatorio(self.combo_tipo_servicio.get(), "Tipo de servicio")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.entry_nombre.get(), "Nombre")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")    
+
+        try:
+            campo_obligatorio(self.entry_duracion.get(), "Duración")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        duracion_validada = None
+        try:
+            duracion_validada = numero_entero_positivo(self.entry_duracion.get(), "Duración")
+        except ValueError as e:
+            errores.append(f"• {e}")    
+
+        try:
+            campo_obligatorio(self.entry_precio.get(), "Precio")
+        except ValueError as e:
+            errores.append(f"• {e}")
+        
+        precio_validado = None
+        try:
+            precio_validado = numero_decimal_positivo(self.entry_precio.get(), "Precio")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        if errores:
+            mensaje_final = "\n".join(errores)
+            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+=======
         # Sin validación de formulario a propósito (ver docstring del
         # módulo) — acá se engancha validaciones.py cuando esté listo.
         tipo_servicio_id = self.tipos_servicio.get(self.combo_tipo_servicio.get())
@@ -184,6 +230,7 @@ class AbmServicios(ttk.Frame):
             precio = float(precio_texto) if precio_texto else None
         except ValueError:
             messagebox.showerror("Datos inválidos", "Duración y precio deben ser números.")
+>>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907
             return
 
         try:
@@ -231,33 +278,3 @@ class AbmServicios(ttk.Frame):
         self._nuevo()
         self._refrescar_listado()
 
-    def _validar(self):
-        """Validaciones mínimas de formulario.
-
-        Hito 3: reemplazar por validaciones.py (Tomás) cuando esté
-        disponible, para reutilizar la misma lógica en todos los ABM.
-        """
-        errores = []
-
-        if not self.entry_nombre.get().strip():
-            errores.append("El nombre es obligatorio.")
-        if not self.combo_tipo_servicio.get().strip():
-            errores.append("El tipo de servicio es obligatorio.")
-
-        duracion = self.entry_duracion.get().strip()
-        if not duracion:
-            errores.append("La duración es obligatoria.")
-        elif not duracion.isdigit() or int(duracion) <= 0:
-            errores.append("La duración debe ser un número entero mayor a 0.")
-
-        precio = self.entry_precio.get().strip()
-        if not precio:
-            errores.append("El precio es obligatorio.")
-        else:
-            try:
-                if float(precio) < 0:
-                    errores.append("El precio no puede ser negativo.")
-            except ValueError:
-                errores.append("El precio debe ser un número.")
-
-        return errores

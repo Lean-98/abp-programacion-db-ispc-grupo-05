@@ -15,6 +15,8 @@ from tkinter import ttk, messagebox
 import datos
 from ui.widgets_comunes import campo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio, validar_longitud_max
+
 
 COLUMNAS = [
     ("nombre", "Nombre", 130),
@@ -151,6 +153,33 @@ class AbmProfesionales(ttk.Frame):
         self.tree.selection_remove(self.tree.selection())
 
     def _guardar(self):
+<<<<<<< HEAD
+        errores = []
+
+        try:
+            campo_obligatorio(self.entry_nombre.get(), "Nombre")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_nombre.get(), "Nombre", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")      
+
+        try:
+            campo_obligatorio(self.entry_apellido.get(), "Apellido")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            validar_longitud_max(self.entry_apellido.get(), "Apellido", 50)
+        except ValueError as e:
+            errores.append(f"• {e}")  
+
+        if errores:
+            mensaje_final = "\n".join(errores)
+            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+=======
         # Sin validación de formulario a propósito (ver docstring del
         # módulo) — acá se engancha validaciones.py cuando esté listo.
         nombre = self.entry_nombre.get().strip()
@@ -169,6 +198,7 @@ class AbmProfesionales(ttk.Frame):
                 mensaje = "Profesional actualizado correctamente."
         except datos.ErrorBaseDeDatos as e:
             messagebox.showerror("No se pudo guardar", f"Error al guardar el profesional:\n{e}")
+>>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907
             return
 
         messagebox.showinfo("Guardar profesional", mensaje)
@@ -204,17 +234,3 @@ class AbmProfesionales(ttk.Frame):
         self._nuevo()
         self._refrescar_listado()
 
-    def _validar(self):
-        """Validaciones mínimas de formulario.
-
-        Hito 3: reemplazar por validaciones.py (Tomás) cuando esté
-        disponible, para reutilizar la misma lógica en todos los ABM.
-        """
-        errores = []
-
-        if not self.entry_nombre.get().strip():
-            errores.append("El nombre es obligatorio.")
-        if not self.entry_apellido.get().strip():
-            errores.append("El apellido es obligatorio.")
-
-        return errores

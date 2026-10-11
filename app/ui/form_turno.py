@@ -16,6 +16,7 @@ from tkinter import ttk, messagebox
 import datos
 from ui.widgets_comunes import campo_formulario, combo_formulario, crear_treeview
 
+from ui.validaciones import campo_obligatorio
 
 # Estados posibles de un turno (valor de dominio fijo, no es mockdata de la app).
 ESTADOS = ["pendiente", "confirmado", "completado", "cancelado"]
@@ -213,6 +214,46 @@ class FormTurno(ttk.Frame):
             )
 
     def _guardar(self):
+<<<<<<< HEAD
+        
+        errores = []
+
+        try:
+            campo_obligatorio(self.combo_cliente.get(), "Cliente")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.combo_profesional.get(), "Profesional")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.combo_tipo_pago.get(), "Tipo de pago")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.entry_fecha.get(), "Fecha")
+        except ValueError as e:
+            errores.append(f"• {e}")
+
+        try:
+            campo_obligatorio(self.combo_estado.get(), "Estado")
+        except ValueError as e:
+            errores.append(f"• {e}")
+        
+        if errores:
+            mensaje_final = "\n".join(errores)
+            messagebox.showerror("Errores en el Formulario", f"Por favor, corrige lo siguiente:\n\n{mensaje_final}")
+            return
+                
+        # Hito 3: acá va el guardado real
+        # vía datos.crear_turno(...) / datos.actualizar_turno(...).
+        messagebox.showinfo(
+            "Guardar turno", "Turno guardado (simulado, sin persistencia todavía)."
+        )
+=======
         # Sin validación de formulario a propósito (ver docstring del
         # módulo) — acá se engancha validaciones.py cuando esté listo.
         cliente_id = self.clientes.get(self.combo_cliente.get())
@@ -267,6 +308,7 @@ class FormTurno(ttk.Frame):
         messagebox.showinfo("Guardar turno", mensaje)
         if self.on_guardado:
             self.on_guardado()
+>>>>>>> 3d0f2020f23fb12df8df92ed0cde2fdb714de907
         self.parent.destroy()
 
     def _cancelar(self):

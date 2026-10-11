@@ -1,0 +1,16 @@
+yaml
+site_name: Manual de Usuario - Mi App Python
+theme:
+  name: material
+  palette:
+    primary: indigo
+    accent: indigo
+
+plugins:
+  - mkdocstrings # El truco mágico para leer tu código de Python
+
+nav:
+  - Inicio: index.md
+  - Guía de Uso: guia.md
+  - Referencia del Código: codigo.md
+  
