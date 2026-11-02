@@ -21,6 +21,27 @@ import psycopg2.extras
 # tener que importar psycopg2 directamente.
 ErrorBaseDeDatos = psycopg2.Error
 
+
+def _cargar_env():
+    """
+    Lee el archivo .env de la raíz del repo (el mismo que usa
+    docker-compose) y carga sus variables en os.environ. Las variables
+    que ya estén definidas en el entorno tienen prioridad.
+    """
+    ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env")
+    if not os.path.exists(ruta):
+        return
+    with open(ruta, encoding="utf-8") as f:
+        for linea in f:
+            linea = linea.strip()
+            if not linea or linea.startswith("#") or "=" not in linea:
+                continue
+            clave, valor = linea.split("=", 1)
+            os.environ.setdefault(clave.strip(), valor.strip().strip("\"'"))
+
+
+_cargar_env()
+
 CONFIG = {
     "host": os.environ.get("DB_HOST", "localhost"),
     "port": os.environ.get("DB_PORT", "5432"),

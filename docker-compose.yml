@@ -4,11 +4,13 @@ services:
     container_name: turnero-db
     restart: unless-stopped
     environment:
+      # Usuario administrador de Postgres (dueño de las tablas). No usar
+      # DB_USER acá: turnero_app lo crea docs/roles.sql y chocaría.
       POSTGRES_USER: ${POSTGRES_USER:-turnero}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-turnero}
-      POSTGRES_DB: ${POSTGRES_DB:-turnero}
+      POSTGRES_DB: ${DB_NAME:-turnero}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - turnero_pgdata:/var/lib/postgresql/data
       # Postgres corre todo lo que encuentra acá en orden alfabético, pero
@@ -17,7 +19,7 @@ services:
       - ./docs/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./docs/roles.sql:/docker-entrypoint-initdb.d/02-roles.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-turnero} -d ${POSTGRES_DB:-turnero}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-turnero} -d ${DB_NAME:-turnero}"]
       interval: 5s
       timeout: 5s
       retries: 5
